@@ -1,0 +1,126 @@
+========== PART A ==========
+
+--- Investigating Clause 5 in Raw Docling ---
+Found heading at index 2838: 5 High level features
+Subsequent 3 items:
+  [2839] Label: section_header | Text: '5.1 General'
+  [2840] Label: text | Text: 'Clause 5 specifies the high level functionality and features of the 5G System for both 3GPP and Non-3GPP access and for the interoperability with the EPC defined in TS 23.401 [26].'
+  [2841] Label: page_footer | Text: 'ETSI'
+
+--- Investigating Clause 5.3 in Raw Docling ---
+Found heading at index 2883: 5.3 Registration and Connection Management
+Subsequent 3 items:
+  [2884] Label: section_header | Text: '5.3.1 General'
+  [2885] Label: text | Text: 'The Registration Management is used to register or deregister a UE/user with the network, and establish the user context in the network. The Connection Management is used to establish and release the signalling connection between the UE and the AMF.'
+  [2886] Label: section_header | Text: '5.3.2 Registration Management'
+
+--- Investigating Clause 5.3.4 in Raw Docling ---
+Found heading at index 3142: 5.3.4 UE Mobility
+Subsequent 3 items:
+  [3143] Label: section_header | Text: '5.3.4.1 Mobility Restrictions'
+  [3144] Label: section_header | Text: '5.3.4.1.1 General'
+  [3145] Label: text | Text: 'Mobility Restrictions restrict mobility handling or service access of a UE. The Mobility Restriction functionality is provided by the UE (only for mobility restriction categories provided to the UE), the radio access network and the core network.'
+
+--- Investigating Clause 4.3.3 in Raw Docling ---
+Found heading at index 2159: 4.3.3 Interworking between 5GC via non-3GPP access and E-UTRAN connected to EPC
+Subsequent 3 items:
+  [2160] Label: section_header | Text: '4.3.3.1 Non-roaming architecture'
+  [2161] Label: text | Text: 'Figure 4.3.3-1 represents the non-roaming architecture for interworking between 5GC via non-3GPP access and EPC/EUTRAN.'
+  [2162] Label: page_footer | Text: 'ETSI'
+
+--- Investigating Clause 4.4.2 in Raw Docling ---
+Found heading at index 2566: 4.4.2 SMS over NAS
+Subsequent 3 items:
+  [2567] Label: section_header | Text: '4.4.2.0 General'
+  [2568] Label: text | Text: 'This clause introduces legacy SMS over NAS architecture, in which the interfaces between SMSF/UDM and SMSGMSC/SMS-IWMSC/IP-SM-GW/SMS Router are still based on legacy protocol (i.e. MAP or Diameter).'
+  [2569] Label: text | Text: 'The SBI-based SMS architecture and interfaces are specified in TS 23.540 [142].'
+
+--- Investigating Clause 3 in Raw Docling ---
+Found heading at index 300: 3 Definitions and abbreviations
+Subsequent 3 items:
+  [301] Label: section_header | Text: '3.1 Definitions'
+  [302] Label: text | Text: 'For the purposes of the present document, the terms and definitions given in TR 21.905 [1] and the following apply. A term defined in the present document takes precedence over the definition of the same term, if any, in TR 21.905 [1].'
+  [303] Label: text | Text: '5G VN Group: A set of UEs using private communication for 5G LAN-type service.'
+
+--- Checking PDF visually (via PyMuPDF) ---
+
+Searching PDF for heading 5...
+Found on page 82
+Snippet:
+5 
+
+
+Searching PDF for heading 5.3...
+Found on page 84
+Snippet:
+5.3 
+
+
+Searching PDF for heading 5.3.4...
+Found on page 94
+Snippet:
+5.3.4 
+
+
+Searching PDF for heading 4.3.3...
+Found on page 68
+Snippet:
+4.3.3 
+
+
+Searching PDF for heading 4.4.2...
+Found on page 76
+Snippet:
+4.4.2 
+
+
+Searching PDF for heading 3...
+Found on page 26
+Snippet:
+3 
+
+
+========== PART B ==========
+Affected Chunks by File:
+  data/chunks/ts_123501v171100p_chunks.json: 543
+  data/chunks/ts_124301v170900p_chunks.json: 584
+  data/chunks/ts_124501v171200p_chunks.json: 889
+
+Checking raw docling for page headers (ETSI, etc):
+Docling item: ETSI TS 123 501 V17.11.0 (2024-01) => LABEL: section_header
+Docling item: ETSI => LABEL: text
+Docling item: 5G; System architecture for the 5G System (5GS) (3GPP TS 23.501 version 17.11.0 Release 17) => LABEL: section_header
+Docling item: 3GPP TS 23.501 version 17.11.0 Release 17 => LABEL: page_header
+Docling item: ETSI TS 123 501 V17.11.0 (2024-01) => LABEL: page_header
+Docling item: ETSI => LABEL: section_header
+Docling item: The present document may be made available in electronic versions and/or in print. The content of any electronic and/or print versions of the present document shall not be modified without the prior written authorization of ETSI. In case of any existing or perceived difference in contents between such versions and/or in print, the prevailing version of an ETSI deliverable is the one made publicly available in PDF format at www.etsi.org/deliver . => LABEL: text
+Docling item: Users of the present document should be aware that the document may be subject to revision or change of status. Information on the current status of this and other ETSI documents is available at => LABEL: text
+Docling item: https://portal.etsi.org/TB/ETSIDeliverableStatus.aspx => LABEL: text
+
+========== PART C ==========
+Total pure text duplicates found in 23.501: 7
+
+--- DUPLICATE PAIR 1 ---
+Chunk 1 ID: 0 | Chunk 2 ID: 0
+TEXT:
+ETSI
+
+--- DUPLICATE PAIR 2 ---
+Chunk 1 ID: 0 | Chunk 2 ID: 0
+TEXT:
+ETSI
+
+--- DUPLICATE PAIR 3 ---
+Chunk 1 ID: 0 | Chunk 2 ID: 0
+TEXT:
+ETSI
+
+--- DUPLICATE PAIR 4 ---
+Chunk 1 ID: 0 | Chunk 2 ID: 0
+TEXT:
+ETSI
+
+--- DUPLICATE PAIR 5 ---
+Chunk 1 ID: 0 | Chunk 2 ID: 0
+TEXT:
+ETSI
