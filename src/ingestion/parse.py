@@ -3,6 +3,7 @@ import json
 import os
 
 try:
+    # pyrefly: ignore [missing-import]
     from docling.document_converter import DocumentConverter
 except ImportError:
     print("Docling is not installed. Please install it using 'pip install docling'.")

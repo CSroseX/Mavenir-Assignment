@@ -3,16 +3,15 @@ import json
 import glob
 import sys
 import time
-import requests
 from uuid import uuid4
-from tenacity import retry, wait_exponential, stop_after_attempt
 
 # Check dependencies
 try:
+    from fastembed import TextEmbedding
     from qdrant_client import QdrantClient
     from qdrant_client.models import Distance, VectorParams, PointStruct
 except ImportError:
-    print("Missing dependencies. Please run: pip install qdrant-client tenacity requests")
+    print("Missing dependencies. Please run: pip install qdrant-client fastembed")
     sys.exit(1)
 
 def format_table_for_embedding(grid):
@@ -42,26 +41,26 @@ def run_indexer():
         
     COLLECTION_NAME = "3gpp_specs"
     
-    # Re-create collection for 3072 dimensions
+    # Re-create collection for 384 dimensions (BAAI/bge-small-en-v1.5)
     collections = [c.name for c in q_client.get_collections().collections]
     if COLLECTION_NAME in collections:
         print(f"Deleting existing collection '{COLLECTION_NAME}' to update dimensions...")
         q_client.delete_collection(collection_name=COLLECTION_NAME)
         
-    print(f"Creating collection '{COLLECTION_NAME}' (size: 3072)...")
+    print(f"Creating collection '{COLLECTION_NAME}' (size: 384)...")
     q_client.create_collection(
         collection_name=COLLECTION_NAME,
-        vectors_config=VectorParams(size=3072, distance=Distance.COSINE),
+        vectors_config=VectorParams(size=384, distance=Distance.COSINE),
     )
 
-    # 2. Check API Key
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("FAILED: GEMINI_API_KEY environment variable is not set.")
+    # 2. Setup FastEmbed Local Model
+    print("Initializing FastEmbed Model (BAAI/bge-small-en-v1.5)...")
+    try:
+        # This will download the weights on first run, then cache them locally
+        model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+    except Exception as e:
+        print(f"FAILED to initialize FastEmbed: {e}")
         sys.exit(1)
-    
-    # STRIP THE ROGUE WHITESPACE!
-    api_key = api_key.strip()
 
     # 3. Load Chunks
     chunk_files = glob.glob("data/chunks/*_chunks.json")
@@ -81,23 +80,6 @@ def run_indexer():
     BATCH_SIZE = 100
     points_indexed = 0
     
-    # Add auto-retry for 429 Quota Exhausted limits
-    @retry(wait=wait_exponential(multiplier=2, min=4, max=60), stop=stop_after_attempt(7))
-    def embed_batch_with_retry(texts):
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents?key={api_key}"
-        payload = {
-            "requests": [
-                {
-                    "model": "models/gemini-embedding-2",
-                    "content": {"parts": [{"text": t}]}
-                }
-                for t in texts
-            ]
-        }
-        response = requests.post(url, json=payload)
-        response.raise_for_status() # Will trigger retry if 429 or 5xx
-        return response.json()
-    
     for i in range(0, len(all_chunks), BATCH_SIZE):
         batch = all_chunks[i:i + BATCH_SIZE]
         
@@ -115,16 +97,10 @@ def run_indexer():
         print(f"Embedding batch {i//BATCH_SIZE + 1} ({len(batch)} chunks)...")
         
         try:
-            # We call the raw REST API to correctly batch embed
-            data = embed_batch_with_retry(texts_to_embed)
-            embeddings = data.get("embeddings", [])
-            
-            if len(embeddings) != len(batch):
-                raise ValueError(f"Expected {len(batch)} embeddings, got {len(embeddings)}")
-                
-            vectors = [emb["values"] for emb in embeddings]
+            # Generate local embeddings natively using ONNX! (Yields numpy arrays)
+            vectors = list(model.embed(texts_to_embed))
         except Exception as e:
-            print(f"Embedding failed on batch {i//BATCH_SIZE + 1} after retries: {e}")
+            print(f"Embedding failed on batch {i//BATCH_SIZE + 1}: {e}")
             sys.exit(1)
             
         # Build Qdrant points
@@ -134,7 +110,7 @@ def run_indexer():
             points.append(
                 PointStruct(
                     id=point_id,
-                    vector=vectors[j],
+                    vector=vectors[j].tolist(), # Convert numpy array to python list for Qdrant
                     payload=chunk # The entire chunk dict becomes the payload!
                 )
             )
@@ -146,9 +122,6 @@ def run_indexer():
         )
         points_indexed += len(points)
         print(f"  -> Indexed {points_indexed}/{len(all_chunks)} chunks.")
-        
-        # Tiny sleep to respect rate limits gracefully
-        time.sleep(1)
         
     print("Indexing complete!")
 
