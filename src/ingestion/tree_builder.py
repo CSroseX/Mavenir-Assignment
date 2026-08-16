@@ -86,6 +86,26 @@ def build_tree(input_json_path, output_json_path):
             if not text:
                 continue
                 
+            # --- BOILERPLATE FILTER ---
+            exact_junk = ["ETSI", "Contents", "Foreword", "Trademarks", "Copyright Notification", "Intellectual Property Rights", "Essential patents"]
+            if text in exact_junk:
+                continue
+                
+            if re.match(r'^3GPP TS \d+\.\d+ version \d+\.\d+\.\d+ Release \d+$', text, re.IGNORECASE):
+                continue
+            if re.match(r'^ETSI TS \d+\s+\d+\s+V\d+\.\d+\.\d+\s+\(\d{4}-\d{2}\)$', text, re.IGNORECASE):
+                continue
+            if re.match(r'^\d{1,4}$', text):
+                continue
+            if re.match(r'^The present document.*ETSI.*$', text, re.IGNORECASE):
+                continue
+                
+            # Strict boilerplate filter for page furniture only.
+            # We only drop the block if the entire text string exactly matches a known page furniture format.
+            if re.match(r'^3GPP TS \d+\.\d+ V\d+\.\d+\.\d+ \(\d{4}-\d{2}\)$', text, re.IGNORECASE):
+                continue
+            # --------------------------
+                
             is_heading = False
             match = None
             clause_id = None
