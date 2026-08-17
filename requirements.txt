@@ -1,0 +1,7 @@
+streamlit
+qdrant-client
+fastembed
+sentence-transformers
+langgraph
+openai
+python-dotenv
