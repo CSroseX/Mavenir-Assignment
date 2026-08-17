@@ -1,0 +1,1 @@
+Success! Response: Hello! I’m ChatGPT, built on OpenAI’s GPT‑4 architecture. How can I help you today?

@@ -70,8 +70,7 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=messages_payload,
-        temperature=0.3,
-        reasoning_effort="none"
+        temperature=0.3
     )
     answer = response.choices[0].message.content
     
@@ -137,8 +136,7 @@ Provide your output in the following JSON format ONLY:
             ],
             response_format={"type": "json_object"},
             temperature=0.0,
-            max_tokens=2000,
-            reasoning_effort="none"
+            max_tokens=2000
         )
         raw_json = response.choices[0].message.content
         verification = json.loads(raw_json)
