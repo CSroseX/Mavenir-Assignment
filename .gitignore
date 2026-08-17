@@ -2,3 +2,5 @@
 /Project_spec.md
 /venv
 .env
+src\generation\__pycache__\
+**/__pycache__/
