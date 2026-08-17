@@ -1,0 +1,194 @@
+[
+  {
+    "question": "What is the role of the AMF in the 5G system architecture?",
+    "type": "normal",
+    "expected_behavior": "Should describe AMF functions like registration management, connection management, mobility management based on TS 23.501.",
+    "generated_answer": "In the 5G system architecture, the Access and Mobility Management Function (AMF) serves as the central termination point for the N2 interface from the 5G-AN (Next Generation Radio Access Network). Its primary responsibilities revolve around access and mobility management, but it also plays a critical role in network exposure and load balancing.\n\nHere is a breakdown of the AMF's key roles based on the specifications:\n\n**1. Access and Mobility Management (AMM)**\nThe AMF is responsible for handling the registration, connection, and mobility procedures for UEs. It maintains the MM (Mobility Management) context for each UE. This context includes critical information such as:\n*   UE location\n*   Reachability status\n*   Roaming status\n*   Connectivity status (e.g., loss of connectivity)\n\n**2. Network Exposure and Monitoring**\nThe AMF works in conjunction with the Network Exposure Function (NEF) to expose network capabilities to external parties. Specifically:\n*   The AMF stores **URRP-AMF** (UE Reachability Reporting Policy - AMF) information in the MM context.\n*   This information determines which Network Functions (NFs) are authorized to receive direct notifications from the AMF regarding specific monitoring events (like location changes or reachability).\n*   For indirect notifications, the UDM stores the URRP-AMF information to authorize monitoring requests before forwarding them.\n\n**3. Load Balancing and Re-balancing**\nThe AMF supports load balancing and re-balancing of Transport Network Layer (TNL) associations between the 5G-AN and the AMF itself. It uses mechanisms defined in clause 5.21.1 to manage this distribution of traffic and signaling load.\n\n**4. Discovery and Association with 5G-AN**\n*   The AMF participates in the establishment of associations with 5G-AN nodes via the N2 setup procedure.\n*   AMFs within an AMF Set can advertise the same or distinct AMF Pointer values to the 5G-AN node.\n*   Information about the AMF is published in the DNS system to allow 5G-AN nodes to discover and set up associations with the required AMF.\n*   For interworking with legacy EPC (MME), the AMF information is also published in DNS, and the GUMMEI and GUAMI encoding spaces are partitioned to avoid overlap, enabling unambiguous discovery by the MME.\n\n**5. Influence on Policy Decisions**\nThe AMF can be influenced by the \"5G Preferred Network Behaviour\" indication sent by the UE. This indication can trigger policy decisions that may result in the rerouting of a Registration Request from one AMF to another, facilitating more optimal network resource usage or service delivery.\n\nIn summary, the AMF is the key control plane entity for managing UE access, mobility, and reachability, while also enabling secure exposure of these states to external applications via the NEF and ensuring efficient load distribution across the network.",
+    "sources": [
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.19.2"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "4.2.2"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.21.2.1"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.31.2"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.20"
+      }
+    ],
+    "verification_passed": true,
+    "retries": 1,
+    "status": "verified_after_retry",
+    "feedback": ""
+  },
+  {
+    "question": "How does the UE initiate a PDU session establishment in 5GS?",
+    "type": "normal",
+    "expected_behavior": "Should describe the UE sending a PDU Session Establishment Request via NAS as per TS 24.501.",
+    "generated_answer": "To initiate a UE-requested PDU session establishment procedure in 5GS, the UE performs the following steps as defined in 3GPP TS 24.501:\n\n1.  **Create the Message**: The UE creates a **PDU SESSION ESTABLISHMENT REQUEST** message.\n2.  **Allocate PDU Session ID**: If the UE is requesting to establish a *new* PDU session, it must allocate a PDU Session ID that is not currently being used by another PDU session over either 3GPP access or non-3GPP access.\n    *   *Note for N5CW devices*: If the N5CW device supports 3GPP access and requests a new session via 3GPP access, it must refrain from allocating PDU session identity value 15. If a TWIF acts on behalf of the N5CW device, it shall allocate PDU session identity value 15.\n3.  **Allocate PTI**: The UE allocates a Packet Transaction Identifier (PTI) value that is currently not used and sets the PTI Information Element (IE) in the PDU SESSION ESTABLISHMENT REQUEST message to this allocated value.\n\nThe procedure is used to establish a new PDU session with a Data Network (DN), perform handover of an existing PDU session between 3GPP and non-3GPP access, transfer an existing PDN connection from EPS to 5GS, or establish an MA PDU session for ATSSS.",
+    "sources": [
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.4.1.1"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.4.3.2"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.4.1.4.1"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.1.2"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.4.1.2"
+      }
+    ],
+    "verification_passed": true,
+    "retries": 2,
+    "status": "verified_after_retry",
+    "feedback": ""
+  },
+  {
+    "question": "Which network function is responsible for selecting the SMF?",
+    "type": "normal",
+    "expected_behavior": "Should state that the AMF is responsible for SMF selection.",
+    "generated_answer": "The **AMF** (Access and Mobility Management Function) is primarily responsible for selecting the SMF.\n\nSpecifically, the SMF selection functionality is supported by the AMF (and the SCP in some architectures) to allocate an SMF that will manage the PDU Session. When the AMF receives a request to establish a PDU Session from the UE, it initiates the SMF discovery and selection process within the selected Network Slice instance.\n\nThe AMF typically utilizes the **NRF** (Network Repository Function) to discover available SMF instances. It queries the NRF based on parameters such as S-NSSAI, DNN, NSI-ID (if available), UE subscription data, and local operator policies. The NRF returns the NF profiles and service areas of candidate SMFs, allowing the AMF to select the appropriate instance. Alternatively, if SMF information is locally configured on the AMF, it can select the SMF directly without querying the NRF.\n\nFor emergency services, the AMF may also select the SMF directly from its local Emergency Configuration Data, or apply the standard selection function to ensure the SMF is in the Serving PLMN or SNPN.",
+    "sources": [
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.16.3.11"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.15.5.3"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.16.4.5"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "6.3.2"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "6.3.3.1"
+      }
+    ],
+    "verification_passed": true,
+    "retries": 1,
+    "status": "verified_after_retry",
+    "feedback": ""
+  },
+  {
+    "question": "What is the structure of the 5G-GUTI?",
+    "type": "normal",
+    "expected_behavior": "Should explain the components of 5G-GUTI (GUAMI + 5G-TMSI, etc.).",
+    "generated_answer": "The 5G-GUTI (5G Globally Unique Temporary Identity) is structured as a concatenation of two main components:\n\n**<5G-GUTI> := <GUAMI> <5G-TMSI>**\n\nHere is the breakdown of those components:\n\n1.  **GUAMI (Globally Unique AMF Identifier):** This identifies the Access and Mobility Management Function (AMF) or a group of AMFs. The GUAMI itself is structured as:\n    *   **<MCC>** (Mobile Country Code)\n    *   **<MNC>** (Mobile Network Code)\n    *   **<AMF Region ID>**\n    *   **<AMF Set ID>**\n    *   **<AMF Pointer>**\n\n2.  **5G-TMSI (5G Temporary Mobile Subscriber Identity):** This identifies the UE uniquely within the AMF (or AMF Set) identified by the GUAMI.\n\n**Key Operational Notes:**\n*   **Uniqueness:** If the GUAMI identifies a single AMF, the 5G-TMSI must be unique within that AMF. If the GUAMI is shared by multiple AMFs, the AMF assigning the 5G-GUTI must ensure the 5G-TMSI value is not already in use by the other AMFs sharing that GUAMI.\n*   **Shortened Form:** For efficient radio signaling (e.g., Paging, Service Request), a shortened form called the **5G-S-TMSI** is used. Its structure is:\n    **<5G-S-TMSI> := <AMF Set ID> <AMF Pointer> <5G-TMSI>**\n    (Note that the MCC, MNC, and AMF Region ID are omitted from the 5G-S-TMSI).",
+    "sources": [
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.3.3"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.9.4"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "9.11.3.4"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.3.3"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.3.2.4"
+      }
+    ],
+    "verification_passed": true,
+    "retries": 1,
+    "status": "verified_after_retry",
+    "feedback": ""
+  },
+  {
+    "question": "Describe the states of 5GMM (5GS Mobility Management) in the UE.",
+    "type": "normal",
+    "expected_behavior": "Should list states like 5GMM-DEREGISTERED, 5GMM-REGISTERED, etc., from TS 24.501.",
+    "generated_answer": "The 5GMM (5GS Mobility Management) sublayer in the UE is managed using state machines that operate independently per access type, meaning the state is tracked separately for 3GPP access and non-3GPP access.\n\nThe two primary states defined for the 5GMM sublayer are:\n\n1.  **5GMM-DEREGISTERED**: In this state, the UE is not registered with the 5GS network. The UE must initiate registration procedures to transition to the registered state.\n2.  **5GMM-REGISTERED**: In this state, the UE has successfully registered with the 5GS network. A 5GMM context is established between the UE and the AMF, and secure exchange of NAS messages has been initiated. This state is a prerequisite for performing 5GSM (Session Management) procedures, such as establishing PDU sessions.\n\nThe detailed behavior of the UE in these states, including the transitions and specific actions required, is described in the relevant subclauses of the specification (specifically subclause 5.2.1 for detailed behavior). The 5GMM sublayer's main functions include supporting UE identification, security, mobility, and generic message transport, as well as providing connection management services to other sublayers like 5GSM.",
+    "sources": [
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.1.3.1"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.2.1"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.1.1"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.1.1"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "4.2"
+      }
+    ],
+    "verification_passed": true,
+    "retries": 1,
+    "status": "verified_after_retry",
+    "feedback": ""
+  },
+  {
+    "question": "What is the purpose of the Network Slice Selection Assistance Information (NSSAI)?",
+    "type": "normal",
+    "expected_behavior": "Should explain NSSAI is used for network slice selection.",
+    "generated_answer": "The Network Slice Selection Assistance Information (NSSAI) is fundamentally a collection of Single-NSSAIs (S-NSSAIs). Its primary purpose is to allow the network to select the appropriate Serving AMF, Network Slice(s), and specific Network Slice instance(s) for a UE.\n\nIn practice, the NSSAI serves several critical functions depending on its specific type (Configured, Requested, or Allowed):\n\n1.  **AMF and Slice Selection:** The **Requested NSSAI**, signaled by the UE to the network, is used by the RAN for AMF selection and allows the 5GC to determine which Network Slice instances should serve the UE based on subscription information and availability.\n2.  **Service Provisioning:** The **Allowed NSSAI** indicates which slices the UE is currently authorized to use in the registered area. The RAN may also use the Requested NSSAI in access stratum signaling to handle the UE Control Plane connection before the 5GC informs the RAN of the Allowed NSSAI.\n3.  **Instance Management:** Since a single S-NSSAI can be associated with multiple Network Slice instances (deployed in the same or different Tracking Areas), the NSSAI mechanisms ensure that for any given S-NSSAI, the network serves the UE with only one specific Network Slice instance at a time, unless specific conditions like a change in the Allowed NSSAI or registration area occur.\n\nAdditionally, there is a separate **Network slicing indication** information element (defined in TS 24.501) used in the generic UE configuration update and registration procedures to convey additional slicing information beyond the standard Configured, Allowed, Pending, and Rejected NSSAI sets.",
+    "sources": [
+      {
+        "spec_id": "24.501",
+        "clause_id": "9.11.3.36"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.15.2.1"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.15.5.3"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.15.2.1"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "6.2.14"
+      }
+    ],
+    "verification_passed": true,
+    "retries": 1,
+    "status": "verified_after_retry",
+    "feedback": ""
+  }
+]

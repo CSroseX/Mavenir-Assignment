@@ -120,7 +120,7 @@ class Retriever:
             
         # Rerank with Cross-Encoder
         print(f"Reranking {len(candidates)} candidates...")
-        pairs = [[query, c["content"]] for c in candidates]
+        pairs = [(str(query), str(c["content"])) for c in candidates]
         cross_scores = self.cross_encoder.predict(pairs)
         
         for i, c in enumerate(candidates):

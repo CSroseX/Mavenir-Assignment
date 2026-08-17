@@ -18,6 +18,14 @@ def load_eval_results():
             return json.load(f)
     return []
 
+@st.dialog("Answer Details")
+def show_answer_dialog(question, answer, status):
+    st.markdown(f"**Question:**\n{question}")
+    st.divider()
+    st.markdown(f"**Answer:**\n{answer}")
+    st.divider()
+    st.markdown(f"**Status:** {status}")
+
 def main():
     st.title("3GPP RAG Assistant")
     
@@ -162,11 +170,30 @@ def main():
                     "Status": r.get("status"),
                     "Retries": r.get("retries"),
                     "Sources": len(r.get("sources", [])),
-                    "Verdict": "Pass" if r.get("verification_passed") else "Fail"
+                    "Verdict": "Pass" if r.get("verification_passed") else "Fail",
+                    "Answer": r.get("generated_answer", "")
                 })
                 
             if df_data:
-                st.dataframe(df_data, use_container_width=True)
+                st.markdown("*(Click on any row in the table to pop up the full answer)*")
+                event = st.dataframe(
+                    df_data, 
+                    use_container_width=True,
+                    on_select="rerun",
+                    selection_mode="single-row",
+                    column_config={
+                        "Answer": st.column_config.TextColumn(
+                            "Answer (Click Row to View)",
+                            width="medium",
+                            max_chars=30
+                        )
+                    }
+                )
+                
+                if event.selection.rows:
+                    selected_idx = event.selection.rows[0]
+                    row_data = df_data[selected_idx]
+                    show_answer_dialog(row_data["Question"], row_data["Answer"], row_data["Status"])
 
 if __name__ == "__main__":
     main()

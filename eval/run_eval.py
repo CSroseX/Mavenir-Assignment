@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+import time
 
 # Ensure the root of the project is in the python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,8 +36,18 @@ def main():
     retriever = Retriever()
     
     results = []
+    if os.path.exists(results_path):
+        with open(results_path, "r", encoding="utf-8") as f:
+            try:
+                results = json.load(f)
+                print(f"Resuming from {len(results)} existing results...")
+            except:
+                pass
+                
+    start_index = len(results)
     
-    for i, item in enumerate(eval_set):
+    for i in range(start_index, len(eval_set)):
+        item = eval_set[i]
         question = item["question"]
         q_type = item["type"]
         
@@ -84,6 +95,11 @@ def main():
         # Save intermediate results in case of crash
         with open(results_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
+            
+        # Rate limit protection: wait 5 seconds between questions
+        if i < len(eval_set) - 1:
+            print("Waiting 5 seconds to avoid rate limits...")
+            time.sleep(5)
             
     # Compute aggregate metrics
     total = len(results)
