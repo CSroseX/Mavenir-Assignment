@@ -8,8 +8,9 @@ try:
     from fastembed import TextEmbedding
     from qdrant_client import QdrantClient
     from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
+    from sentence_transformers import CrossEncoder
 except ImportError:
-    print("Missing dependencies. Please run: pip install qdrant-client fastembed")
+    print("Missing dependencies. Please run: pip install qdrant-client fastembed sentence-transformers")
     sys.exit(1)
 
 class Retriever:
@@ -17,6 +18,9 @@ class Retriever:
         self.collection_name = collection_name
         self.q_client = QdrantClient(url=qdrant_url, check_compatibility=False)
         self.model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        print("Loading CrossEncoder...")
+        self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        print("CrossEncoder loaded.")
         
         # Regex patterns for query routing
         self.spec_pattern = re.compile(r"(?i)(?:TS\s*)?\b(\d{2}\.\d{3})\b")
@@ -91,20 +95,47 @@ class Retriever:
             collection_name=self.collection_name,
             query=vector,
             query_filter=query_filter,
-            limit=top_k
+            limit=max(20, top_k)
         ).points
         
-        # Format results
-        formatted_results = []
+        # Format results and prepare for reranking
+        candidates = []
         for res in results:
             payload = res.payload
-            formatted_results.append({
+            candidates.append({
                 "spec_id": payload.get("spec_id"),
                 "clause_id": payload.get("clause_id"),
-                "score": round(res.score, 4),
+                "qdrant_score": round(res.score, 4),
                 "content": payload.get("content", ""),
                 "content_preview": str(payload.get("content", ""))[:150].replace("\n", " ") + "..."
             })
+            
+        if not candidates:
+            return []
+            
+        print(f"\n[DEBUG] --- Candidates retrieved before reranking (Top {len(candidates)}) ---")
+        for i, c in enumerate(candidates):
+            print(f"[{i+1}] Spec {c['spec_id']} Clause {c['clause_id']} | Qdrant Score: {c['qdrant_score']}")
+        print("------------------------------------------------------------\n")
+            
+        # Rerank with Cross-Encoder
+        print(f"Reranking {len(candidates)} candidates...")
+        pairs = [[query, c["content"]] for c in candidates]
+        cross_scores = self.cross_encoder.predict(pairs)
+        
+        for i, c in enumerate(candidates):
+            c["score"] = round(float(cross_scores[i]), 4)
+            
+        # Sort by cross-encoder score
+        candidates.sort(key=lambda x: x["score"], reverse=True)
+        
+        # Take top_k
+        formatted_results = candidates[:top_k]
+        
+        print(f"\n[DEBUG] --- Final Top {top_k} Candidates after reranking ---")
+        for i, c in enumerate(formatted_results):
+            print(f"[{i+1}] Spec {c['spec_id']} Clause {c['clause_id']} | Cross-Encoder Score: {c['score']}")
+        print("----------------------------------------------------------\n")
             
         return formatted_results
 

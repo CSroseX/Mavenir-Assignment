@@ -25,14 +25,9 @@ def should_retry(state: GraphState):
 
 def flag_unverified_node(state: GraphState) -> Dict[str, Any]:
     """
-    Appends a warning to the answer if verification failed after max retries.
+    Passes through the answer if verification failed after max retries, without appending a visible warning.
     """
-    answer = state["answer"]
-    feedback = state.get("feedback", "")
-    
-    warning = f"\n\n[WARNING: The following claims could not be verified against the source text:\n{feedback.replace('The following claims were NOT supported by the source text and must be removed or corrected:', '').strip()}]"
-    
-    return {"answer": answer + warning}
+    return {"answer": state["answer"]}
 
 def build_graph():
     workflow = StateGraph(GraphState)

@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from typing import Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -37,8 +38,19 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     chunk_text = "\n\n".join([f"--- CHUNK {c['clause_id']} (Spec {c['spec_id']}) ---\n{c['content']}" for c in chunks])
     
     system_prompt = (
-        "You are a helpful telecom assistant. Answer the user's query based ONLY on the provided SOURCE CHUNKS. "
-        "Answer naturally in plain prose. Do not include citations or brackets like [1] in your answer."
+        "You are a senior 3GPP standards expert with deep knowledge of 4G and 5G core network architecture, "
+        "NAS procedures, and mobility management. Answer the user's question directly and confidently, "
+        "the way a telecom engineer would explain it to a colleague.\n\n"
+        "Rules:\n"
+        "- Never mention \"chunks,\" \"provided source,\" \"provided text,\" \"provided specifications,\" "
+        "\"retrieved information,\" or any variation referring to how you got this information. "
+        "The user should never know this is a retrieval system.\n"
+        "- If the available information is incomplete or doesn't cover part of the question, say so in natural "
+        "expert language — e.g. \"The exact mechanism for X isn't specified for this scenario\" or \"This detail "
+        "isn't defined in the 5G specifications for this procedure\" — never \"the provided chunks don't mention X.\"\n"
+        "- Do not fabricate details not present in your context. Speak with the confidence of an expert citing "
+        "what's known, and plainly note what isn't, without exposing that this is a limitation of retrieved text.\n"
+        "- Do not use citation brackets like [1]."
     )
     
     user_prompt = f"<SOURCE CHUNKS>\n{chunk_text}\n</SOURCE CHUNKS>\n\n<QUERY>\n{query}\n</QUERY>"
@@ -46,15 +58,36 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if feedback:
         user_prompt += f"\n\n<FEEDBACK FROM PREVIOUS ATTEMPT>\n{feedback}\nPlease revise your answer to ensure all claims are strictly supported by the sources.\n</FEEDBACK FROM PREVIOUS ATTEMPT>"
 
+    messages_payload = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    
+    print("\n[DEBUG] === Exact Payload Sent to LLM (Generate Node) ===")
+    print(json.dumps(messages_payload, indent=2))
+    print("=========================================================\n")
+
     response = client.chat.completions.create(
         model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        temperature=0.3
+        messages=messages_payload,
+        temperature=0.3,
+        reasoning_effort="none"
     )
     answer = response.choices[0].message.content
+    
+    # Safety net: strip out any <think> blocks that might leak through
+    answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
+    
+    # Backstop filter to detect if retrieval language leaked
+    banned_phrases = [
+        "provided source", "provided chunk", "provided text", 
+        "provided specification", "source chunk", "retrieved", "chunks"
+    ]
+    lower_ans = answer.lower()
+    for phrase in banned_phrases:
+        if phrase in lower_ans:
+            print(f"\n[WARNING] Leaking retrieval language detected: '{phrase}'\n")
+            # Optionally, this could be appended to the feedback or status in the future
         
     return {"answer": answer}
 
@@ -96,23 +129,30 @@ Provide your output in the following JSON format ONLY:
   ]
 }}"""
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.0
-    )
-    raw_json = response.choices[0].message.content
-    verification = json.loads(raw_json)
-            
-    is_supported = verification.get("is_supported", False)
-    unsupported = verification.get("unsupported_claims", [])
-    
-    feedback = ""
-    if not is_supported and unsupported:
-        feedback = "The following claims were NOT supported by the source text and must be removed or corrected:\n- " + "\n- ".join(unsupported)
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.0,
+            max_tokens=2000,
+            reasoning_effort="none"
+        )
+        raw_json = response.choices[0].message.content
+        verification = json.loads(raw_json)
+                
+        is_supported = verification.get("is_supported", False)
+        unsupported = verification.get("unsupported_claims", [])
+        
+        feedback = ""
+        if not is_supported and unsupported:
+            feedback = "The following claims were NOT supported by the source text and must be removed or corrected:\n- " + "\n- ".join(unsupported)
+    except Exception as e:
+        print(f"Verification JSON parsing/API error: {e}")
+        is_supported = False
+        feedback = "verification could not complete."
         
     return {
         "verification_passed": is_supported,
