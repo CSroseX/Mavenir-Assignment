@@ -102,6 +102,7 @@ class Retriever:
                 "spec_id": payload.get("spec_id"),
                 "clause_id": payload.get("clause_id"),
                 "score": round(res.score, 4),
+                "content": payload.get("content", ""),
                 "content_preview": str(payload.get("content", ""))[:150].replace("\n", " ") + "..."
             })
             
