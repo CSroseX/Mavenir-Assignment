@@ -32,7 +32,7 @@ for parsed_name, spec_id in specs:
     subprocess.run([sys.executable, "src/ingestion/tree_builder.py", parsed_path, tree_path], check=True)
     
     print(f"Chunking {spec_id}...")
-    subprocess.run([sys.executable, "src/ingestion/chunker.py", tree_path, chunk_path], check=True)
+    subprocess.run([sys.executable, "src/ingestion/chunker.py", tree_path, chunk_path, spec_id], check=True)
 
 print("Indexing all chunks...")
 subprocess.run([sys.executable, "src/ingestion/indexer.py"], check=True)
