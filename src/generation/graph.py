@@ -18,7 +18,7 @@ def should_retry(state: GraphState):
         return END
         
     if state["retries"] >= 3:
-        # Exhausted retries. We will flag the unverified parts in the final output.
+        # Exhausted retries. Route to unverified handler.
         return "flag_unverified"
         
     return "generate"

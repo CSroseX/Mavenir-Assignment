@@ -1,76 +1,135 @@
 # 3GPP RAG Assistant
 
-A retrieval-augmented generation system designed to accurately answer telecom questions using 3GPP specifications.
+A retrieval-augmented generation system designed to answer telecom technical questions grounded in 3GPP specifications.
 
-## Tech Stack
+---
 
-* Python for core logic
-* Streamlit for the chat interface
-* Qdrant for vector storage and semantic search
-* FastEmbed (BAAI/bge-small-en-v1.5) for fast local embeddings
-* Sentence-Transformers (ms-marco-MiniLM-L-6-v2) for cross-encoder reranking
-* LangGraph for orchestrating the generation and verification workflow
-* Groq for high-speed LLM inference
+## Overview
 
-## Decisions Made
+The system processes 3GPP technical specifications (such as TS 23.501, TS 24.301, and TS 24.501), indexes structured text and tables into a vector database, and executes a multi-stage retrieval and verification pipeline to generate grounded answers to technical questions.
 
-We adopted a modular agent architecture using LangGraph. This allowed us to separate the generation logic from the verification logic. We also implemented a dual-path retrieval system. If a user explicitly mentions a specification or clause in their query, the system uses Qdrant metadata filters to narrow the search space before falling back to semantic search. 
+---
 
-We used a two-stage retrieval pipeline. The initial retrieval fetches a wide net of 20 candidates using dense embeddings. These are then reranked locally using a cross-encoder to select the final top 5 chunks. This massively improves context relevance for complex telecom procedures.
+## Architecture
 
-## Solutions Employed to Minimize Hallucinations
+The system consists of four primary components:
 
-We implemented a strict verification node that acts as an impartial judge. It evaluates the generated answer against the retrieved chunks. If any claim is unsupported by the text, the system fails the verification. The system will then retry generation with explicit feedback about what claims failed. 
+1. **Ingestion & Indexing Pipeline (`src/ingestion/`)**:
+   - **Document Parsing (`parse.py`)**: Extracts text, headings, and table structures from specification PDFs using Docling.
+   - **Hierarchy Builder (`tree_builder.py`)**: Parses clause numbers and section hierarchy to build structured clause trees with complete ancestral lineage.
+   - **Clause-Aware Chunker (`chunker.py`)**: Chunks text with soft and hard token limits while preserving clause metadata and keeping tables intact.
+   - **Vector Indexer (`indexer.py`)**: Computes dense vector embeddings using `BAAI/bge-small-en-v1.5` via FastEmbed and indexes vectors and payloads into a Qdrant vector database.
 
-We also disabled the reasoning effort on the LLM to prevent it from leaking internal thought processes into the final output. The system prompt strictly prohibits the LLM from mentioning that it is a retrieval system or using citation brackets. If the context is missing, the LLM is instructed to state plainly that the specifications do not cover the detail.
+2. **Dual-Path Retrieval Engine (`src/retrieval/retriever.py`)**:
+   - **Query Routing**: Uses regex parsing to detect explicit specification numbers (e.g., TS 23.501) or clause references (e.g., clause 5.5.1).
+   - **Path A (Semantic Search)**: Executes global dense semantic retrieval across the entire indexed corpus in Qdrant when no explicit target is present.
+   - **Path B (Targeted Metadata Filter)**: Applies Qdrant payload filters matching the identified `spec_id` and `clause_id` hierarchy.
+   - **Cross-Encoder Reranking**: Reranks the top 20 retrieved chunks using `cross-encoder/ms-marco-MiniLM-L-6-v2` to select the top 5 chunks.
 
-## How to Run
+3. **Generation & Verification Graph (`src/generation/`)**:
+   - **Orchestration (`graph.py`)**: Implements a LangGraph state machine coordinating generation, claim verification, and conditional retry loops.
+   - **Generation Node (`nodes.py`)**: Prompts the LLM to generate domain-expert answers grounded strictly in retrieved context.
+   - **Verification Node (`nodes.py`)**: Evaluates generated claims against source chunks via structured JSON output, identifying unsupported assertions.
+   - **Correction Loop**: Feeds unsupported claim feedback back to the generator for up to 3 revision attempts before outputting the final response.
+
+4. **Interface & Evaluation (`app.py`, `eval/`)**:
+   - **Streamlit App (`app.py`)**: Interactive chat interface displaying answers, grounded status badges, retries, and retrieved source chunks, alongside an evaluation dashboard.
+   - **Evaluation Suite (`eval/run_eval.py`)**: Evaluates queries against an evaluation set (`eval/eval_set.json`), recording verdicts and tracking verification metrics.
+
+---
+
+## Design Decisions
+
+- **Modular State Graph**: Generation and verification are isolated into distinct LangGraph nodes, allowing independent prompt tuning, model configuration, and deterministic retry routing.
+- **Table Preservation**: Tables are preserved in full grid structure without splitting across chunks to maintain relational context across technical data.
+- **Lineage-Enriched Context**: Chunks include complete hierarchical lineage headers (e.g., Spec, Clause ID, Clause Title), ensuring unambiguous context during embedding and LLM generation.
+- **Two-Stage Retrieval**: Dense vector retrieval fetches the top 20 retrieved chunks from Qdrant, followed by cross-encoder reranking to improve relevance for complex technical procedures.
+- **Query Targeting**: Queries containing specific specification or clause identifiers route directly to filtered subset queries, narrowing the search space prior to semantic scoring.
+
+---
+
+## Hallucination Mitigation
+
+- **Strict Judge Verification**: A dedicated verification step fact-checks each claim against the retrieved chunks, failing any response that contains claims not entailed by the context.
+- **Iterative Feedback Loop**: Unsupported claims identified by the verifier are provided directly back to the generator as revision feedback.
+- **Constrained Prompts**: System prompts instruct the LLM to refuse fabrication, avoid assuming details not present in context, and state explicitly when a technical detail is not covered by the specifications.
+- **Leak Prevention**: Post-processing strips internal reasoning tags and checks for leaked retrieval artifacts.
+
+---
+
+## Setup
 
 ### Prerequisites
-* Python 3.9 or higher
-* Docker Desktop (for running Qdrant)
-* Groq API Key
 
-### 1. Setup the Environment
-Create and activate a virtual environment. Install the dependencies.
+- Python 3.9 or higher
+- Docker (for running Qdrant)
+- OpenAI-compatible API endpoint (e.g., Groq) or local LLM server (e.g., Ollama)
+
+### 1. Environment Setup
+
+Create and activate a virtual environment, then install dependencies:
 
 ```bash
 python -m venv venv
+# On Windows:
 venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory and add your API keys.
+### 2. Configuration
+
+Copy the example environment file and configure the variables:
+
+```bash
+cp .env.example .env
+```
+
+Set the required variables in `.env`:
 
 ```env
 USE_REMOTE_LLM=true
-OPENAI_API_KEY=your_groq_api_key_here
+OPENAI_API_KEY=your_api_key_here
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 MODEL_NAME=qwen/qwen3.6-27b
 ```
 
-### 3. Start Qdrant
-Run the Qdrant vector database locally using Docker.
+### 3. Vector Database
+
+Start a local Qdrant instance:
 
 ```bash
-docker run -p 6333:6333 qdrant/qdrant
+docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
 ```
 
-### 4. Run the Evaluation Suite
-You can run the automated evaluation script to test the system against the predefined dataset. 
+Index the specifications into Qdrant:
 
 ```bash
-python eval/run_eval.py
+python src/ingestion/indexer.py
 ```
 
-### 5. Launch the Application
-Start the Streamlit interface to interact with the assistant.
+### 4. Running the Application
+
+Launch the Streamlit web interface:
 
 ```bash
 streamlit run app.py
 ```
 
+### 5. Running the Evaluation Suite
+
+Run the evaluation script against the test benchmark:
+
+```bash
+python eval/run_eval.py
+```
+
+---
+
 ## Limitations
 
-The semantic search relies on a general purpose embedding model. This model might struggle to differentiate between highly specific telecom acronyms that appear in similar contexts. The system is also limited by the chunk size. Very long procedures that span multiple pages might be split across chunks. This makes it difficult for the LLM to piece together the full workflow. Finally, the strict verification judge can sometimes be overly aggressive and flag valid technical deductions as unsupported claims.
+- **Chunk Boundary Splits**: Multi-page procedural flows spanning multiple clauses may be separated across chunk boundaries.
+- **General-Purpose Embeddings**: Out-of-the-box embedding and reranking models may misinterpret niche telecom acronyms that occur across different functional layers.
+- **Aggressive Verification**: The strict verification judge may occasionally flag valid technical deductions as unsupported if the exact wording is absent from the retrieved chunks.

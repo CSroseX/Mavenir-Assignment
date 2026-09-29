@@ -10,7 +10,7 @@ except ImportError:
     sys.exit(1)
 
 def main():
-    # 1. We require two arguments: the PDF to read, and the JSON file to write
+    # 1. Requires two arguments: the PDF to read, and the JSON file to write
     if len(sys.argv) != 3:
         print("Usage: python parse.py <input_pdf> <output_json>")
         sys.exit(1)
@@ -27,14 +27,14 @@ def main():
     # and builds a logical Document tree in memory.
     result = converter.convert(input_pdf)
     
-    # 4. Serialize the Document tree into a standard Python dictionary so we can save it.
+    # 4. Serialize the Document tree into a standard Python dictionary for saving.
     doc_dict = result.document.export_to_dict()
     
     # 5. Ensure the output directory (data/parsed/) exists before trying to save the file.
     os.makedirs(os.path.dirname(output_json), exist_ok=True)
     
-    # 6. Save it as a standard JSON file. This caches the extraction so our chunker can
-    # run instantly on the JSON rather than waiting 5 minutes for the PDF parser every time.
+    # 6. Save as a standard JSON file. This caches extraction so chunker can
+    # run instantly on JSON rather than waiting for PDF parser every time.
     with open(output_json, 'w', encoding='utf-8') as f:
         json.dump(doc_dict, f, indent=2)
         

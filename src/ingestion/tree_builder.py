@@ -32,7 +32,7 @@ def build_tree(input_json_path, output_json_path):
         
     reading_order = doc.get('body', {}).get('children', [])
     
-    # We will output a flat list of enriched Clause objects
+    # Flat list of enriched Clause objects
     clauses = []
     
     # Initialize with a Frontmatter dummy clause for anything before Chapter 1
@@ -101,7 +101,7 @@ def build_tree(input_json_path, output_json_path):
                 continue
                 
             # Strict boilerplate filter for page furniture only.
-            # We only drop the block if the entire text string exactly matches a known page furniture format.
+            # Drop the block if the entire text string matches a known page furniture format.
             if re.match(r'^3GPP TS \d+\.\d+ V\d+\.\d+\.\d+ \(\d{4}-\d{2}\)$', text, re.IGNORECASE):
                 continue
             # --------------------------

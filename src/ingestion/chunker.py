@@ -45,7 +45,7 @@ def chunk_tree(input_json, output_json, spec_id="23.501", version="17.11.0"):
 
         for item in clause.get('content', []):
             if item.get('type') == 'table':
-                # If we hit a table, flush any accumulated text first to maintain reading order
+                # If a table is encountered, flush any accumulated text first to maintain reading order
                 flush_text_chunk()
                 
                 # Tables are NEVER split or flattened. They are saved entirely intact.
@@ -66,14 +66,14 @@ def chunk_tree(input_json, output_json, spec_id="23.501", version="17.11.0"):
                     
                 item_tokens = estimate_tokens(text)
                 
-                # If adding this item exceeds the soft limit (and we already have some text), flush first
+                # If adding this item exceeds the soft limit (and text buffer is non-empty), flush first
                 if current_text_buffer and (current_token_count + item_tokens) > SOFT_LIMIT:
                     flush_text_chunk()
                     
                 current_text_buffer.append(text)
                 current_token_count += item_tokens
                 
-                # If a single massive paragraph somehow exceeds the hard cap on its own, we flush immediately
+                # If a single paragraph exceeds the hard cap on its own, flush immediately
                 if current_token_count > HARD_CAP:
                     flush_text_chunk()
                     

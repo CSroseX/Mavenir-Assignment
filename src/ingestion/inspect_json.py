@@ -44,7 +44,7 @@ def inspect(json_path):
     
     for t in texts:
         # A top-level clause in 3GPP usually starts with a single digit, e.g. "4 Architecture model"
-        # But we'll rely on Docling's level==1 for now to see if it worked.
+        # Rely on Docling's level==1 heading structure.
         if t.get('label') == 'section_header' and t.get('level', 1) == 1:
             current_clause = t.get('text', 'Unknown').strip()
             clause_stats[current_clause] = 0
