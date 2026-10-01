@@ -1,42 +1,48 @@
-import os
 import json
+import os
 import re
 from typing import Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-load_dotenv(dotenv_path=os.path.join(project_root, '.env'))
+from src.config import get_settings
+
+cfg = get_settings()
+
+load_dotenv(dotenv_path=str(cfg.project_root / ".env"))
+
+# Re-read settings after dotenv loads (env vars may have changed)
+get_settings.cache_clear()
+cfg = get_settings()
 
 # Unified client for Ollama or Remote API
-USE_REMOTE_LLM = os.environ.get("USE_REMOTE_LLM", "false").lower() == "true"
+if cfg.use_remote_llm:
+    openrouter_key = cfg.open_router_api_key
+    openai_key = cfg.openai_api_key
+    # OPENAI_BASE_URL is a routing signal: empty means "use the provider default"
+    preferred_base_url = os.environ.get("OPENAI_BASE_URL", "")
 
-openrouter_key = os.environ.get("OPEN_ROUTER_API_KEY")
-openai_key = os.environ.get("OPENAI_API_KEY")
-preferred_base_url = os.environ.get("OPENAI_BASE_URL", "")
-
-if USE_REMOTE_LLM:
     if openrouter_key and (not openai_key or "openrouter.ai" in preferred_base_url.lower()):
         api_key = openrouter_key
-        base_url = preferred_base_url or "https://openrouter.ai/api/v1"
-        default_model = "openai/gpt-oss-20b"
+        base_url = preferred_base_url or cfg.openrouter_base_url
+        default_model = cfg.remote_llm_model_openrouter
     else:
         api_key = openai_key or "dummy"
-        base_url = preferred_base_url or "https://api.openai.com/v1"
-        default_model = "gpt-3.5-turbo"
+        base_url = preferred_base_url or cfg.openai_base_url
+        default_model = cfg.remote_llm_model_openai
 
     client = OpenAI(
         api_key=api_key,
         base_url=base_url,
     )
-    MODEL_NAME = os.environ.get("MODEL_NAME", default_model)
+    MODEL_NAME = cfg.model_name or default_model
 else:
     # Local Ollama endpoint
     client = OpenAI(
-        api_key="ollama", # required but ignored
-        base_url="http://localhost:11434/v1"
+        api_key="ollama",  # required but ignored
+        base_url=cfg.ollama_base_url,
     )
-    MODEL_NAME = "qwen3.5:4b"
+    MODEL_NAME = cfg.local_llm_model
 
 def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -46,10 +52,10 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     query = state["query"]
     chunks = state["chunks"]
     feedback = state.get("feedback", "")
-    
+
     # Format chunks for context
     chunk_text = "\n\n".join([f"--- CHUNK {c['clause_id']} (Spec {c['spec_id']}) ---\n{c['content']}" for c in chunks])
-    
+
     system_prompt = (
         "You are a senior 3GPP standards expert with deep knowledge of 4G and 5G core network architecture, "
         "NAS procedures, and mobility management. Answer the user's question directly and confidently, "
@@ -65,9 +71,9 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "what's known, and plainly note what isn't, without exposing that this is a limitation of retrieved text.\n"
         "- Do not use citation brackets like [1]."
     )
-    
+
     user_prompt = f"<SOURCE CHUNKS>\n{chunk_text}\n</SOURCE CHUNKS>\n\n<QUERY>\n{query}\n</QUERY>"
-    
+
     if feedback:
         user_prompt += f"\n\n<FEEDBACK FROM PREVIOUS ATTEMPT>\n{feedback}\nPlease revise your answer to ensure all claims are strictly supported by the sources.\n</FEEDBACK FROM PREVIOUS ATTEMPT>"
 
@@ -75,7 +81,7 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
-    
+
     print("\n[DEBUG] === Exact Payload Sent to LLM (Generate Node) ===")
     print(json.dumps(messages_payload, indent=2))
     print("=========================================================\n")
@@ -83,24 +89,23 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=messages_payload,
-        temperature=0.3
+        temperature=cfg.generate_temperature
     )
     answer = response.choices[0].message.content
-    
+
     # Safety net: strip out any <think> blocks that might leak through
     answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
-    
+
     # Backstop filter to detect if retrieval language leaked
     banned_phrases = [
-        "provided source", "provided chunk", "provided text", 
+        "provided source", "provided chunk", "provided text",
         "provided specification", "source chunk", "retrieved", "chunks"
     ]
     lower_ans = answer.lower()
     for phrase in banned_phrases:
         if phrase in lower_ans:
             print(f"\n[WARNING] Leaking retrieval language detected: '{phrase}'\n")
-            # Optionally, this could be appended to the feedback or status in the future
-        
+
     return {"answer": answer}
 
 def verify_claims_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -111,9 +116,9 @@ def verify_claims_node(state: Dict[str, Any]) -> Dict[str, Any]:
     answer = state["answer"]
     chunks = state["chunks"]
     retries = state.get("retries", 0)
-    
+
     chunk_text = "\n\n".join([f"--- CHUNK {c['clause_id']} (Spec {c['spec_id']}) ---\n{c['content']}" for c in chunks])
-    
+
     prompt = f"""You are a strict, impartial fact-checker. You will be provided with an ANSWER generated by an AI assistant, and a set of SOURCE CHUNKS retrieved from 3GPP telecom specifications.
 
 Verify if every factual claim in the ANSWER is strictly supported by the SOURCE CHUNKS.
@@ -148,15 +153,15 @@ Provide your output in the following JSON format ONLY:
                 {"role": "user", "content": prompt}
             ],
             response_format={"type": "json_object"},
-            temperature=0.0,
-            max_tokens=2000
+            temperature=cfg.verify_temperature,
+            max_tokens=cfg.verify_max_tokens
         )
         raw_json = response.choices[0].message.content
         verification = json.loads(raw_json)
-                
+
         is_supported = verification.get("is_supported", False)
         unsupported = verification.get("unsupported_claims", [])
-        
+
         feedback = ""
         if not is_supported and unsupported:
             feedback = "The following claims were NOT supported by the source text and must be removed or corrected:\n- " + "\n- ".join(unsupported)
@@ -164,7 +169,7 @@ Provide your output in the following JSON format ONLY:
         print(f"Verification JSON parsing/API error: {e}")
         is_supported = False
         feedback = "verification could not complete."
-        
+
     return {
         "verification_passed": is_supported,
         "feedback": feedback,

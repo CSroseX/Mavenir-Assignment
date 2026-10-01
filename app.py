@@ -7,6 +7,7 @@ import sys
 # Ensure the root of the project is in the python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from src.config import get_settings
 from src.generation.graph import build_graph
 from src.retrieval.retriever import Retriever
 
@@ -73,7 +74,7 @@ def main():
             with st.chat_message("assistant"):
                 with st.spinner("Retrieving and Generating..."):
                     retriever = Retriever()
-                    chunks = retriever.search(query, top_k=5)
+                    chunks = retriever.search(query, top_k=get_settings().default_top_k)
                     
                     if not chunks:
                         st.warning("No relevant chunks found in the database.")
