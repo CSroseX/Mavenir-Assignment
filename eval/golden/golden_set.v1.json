@@ -1,0 +1,216 @@
+[
+  {
+    "id": 1,
+    "question": "What is the role of the AMF in the 5G system architecture?",
+    "type": "normal",
+    "expected_behavior": "Should describe AMF functions like registration management, connection management, mobility management based on TS 23.501.",
+    "gold_clauses": [
+      {"spec_id": "23.501", "clause_id": "6.2.1"}
+    ],
+    "retrieval_scored": true,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 23.501 Clause 6.2.1 explicitly defines the core roles, functions, and termination interfaces of the AMF in 5GS."
+  },
+  {
+    "id": 2,
+    "question": "How does the UE initiate a PDU session establishment in 5GS?",
+    "type": "normal",
+    "expected_behavior": "Should describe the UE sending a PDU Session Establishment Request via NAS as per TS 24.501.",
+    "gold_clauses": [
+      {"spec_id": "24.501", "clause_id": "6.4.1.2"},
+      {"spec_id": "24.501", "clause_id": "6.4.1.1"}
+    ],
+    "retrieval_scored": true,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 24.501 Clause 6.4.1.2 details the initiation steps and PDU SESSION ESTABLISHMENT REQUEST message sent by the UE."
+  },
+  {
+    "id": 3,
+    "question": "Which network function is responsible for selecting the SMF?",
+    "type": "normal",
+    "expected_behavior": "Should state that the AMF is responsible for SMF selection.",
+    "gold_clauses": [
+      {"spec_id": "23.501", "clause_id": "6.3.2"}
+    ],
+    "retrieval_scored": true,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 23.501 Clause 6.3.2 details the SMF selection function performed by the AMF."
+  },
+  {
+    "id": 4,
+    "question": "What is the structure of the 5G-GUTI?",
+    "type": "normal",
+    "expected_behavior": "Should explain the components of 5G-GUTI (GUAMI + 5G-TMSI, etc.).",
+    "gold_clauses": [
+      {"spec_id": "23.501", "clause_id": "5.9.4"},
+      {"spec_id": "24.501", "clause_id": "9.11.3.4"}
+    ],
+    "retrieval_scored": true,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 23.501 Clause 5.9.4 defines the architectural components of 5G-GUTI (GUAMI + 5G-TMSI), while TS 24.501 Clause 9.11.3.4 defines its exact IE coding."
+  },
+  {
+    "id": 5,
+    "question": "Describe the states of 5GMM (5GS Mobility Management) in the UE.",
+    "type": "normal",
+    "expected_behavior": "Should list states like 5GMM-DEREGISTERED, 5GMM-REGISTERED, etc., from TS 24.501.",
+    "gold_clauses": [
+      {"spec_id": "24.501", "clause_id": "5.1.3.2"},
+      {"spec_id": "24.501", "clause_id": "5.1.3.1"}
+    ],
+    "retrieval_scored": true,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 24.501 Clause 5.1.3.2 explicitly enumerates and defines all 5GMM main states in the UE (NULL, DEREGISTERED, REGISTERED, etc.)."
+  },
+  {
+    "id": 6,
+    "question": "What is the purpose of the Network Slice Selection Assistance Information (NSSAI)?",
+    "type": "normal",
+    "expected_behavior": "Should explain NSSAI is used for network slice selection.",
+    "gold_clauses": [
+      {"spec_id": "23.501", "clause_id": "5.15.1"},
+      {"spec_id": "23.501", "clause_id": "5.15.2"}
+    ],
+    "retrieval_scored": true,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 23.501 Clause 5.15.1 and 5.15.2 define the purpose of NSSAI (collection of S-NSSAIs) to assist the network in selecting a Network Slice Instance."
+  },
+  {
+    "id": 7,
+    "question": "When an MME receives an Attach Request, does it communicate with the UDM?",
+    "type": "adversarial",
+    "expected_behavior": "Should point out that MME is an EPS (4G) entity and communicates with HSS, whereas UDM is a 5GS entity.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": false,
+    "notes": "TS 24.301 Clause 5.5.1.2.2 details MME Attach handling and TS 23.501 Clause 6.2.7 defines UDM as a 5GS NF. Note: the 4G MME-HSS architectural interface (S6a) is specified in TS 23.401 which is outside the corpus, so full correction is not directly answerable from corpus alone."
+  },
+  {
+    "id": 8,
+    "question": "What timer does the AMF use for a Tracking Area Update in EPS?",
+    "type": "adversarial",
+    "expected_behavior": "Should clarify that AMF and 5G use Registration Update, whereas EPS and MME use Tracking Area Update.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 24.301 Clause 5.3.5 establishes timer T3412 for EPS TAU (MME), while TS 24.501 Clause 5.3.5 establishes timer T3512 for 5GS periodic registration (AMF)."
+  },
+  {
+    "id": 9,
+    "question": "During a 5G registration, how is the EPS bearer identity allocated?",
+    "type": "adversarial",
+    "expected_behavior": "Should clarify that 5GS uses PDU sessions and QoS flows, not EPS bearers.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 24.501 Clause 5.5.1.2.2 defines 5GS initial registration (using PDU Session ID and QFIs), whereas TS 24.301 Clause 6.4.1.2 defines EPS bearer identity allocation in 4G."
+  },
+  {
+    "id": 10,
+    "question": "Does the SGW connect to the SMF for user plane traffic?",
+    "type": "adversarial",
+    "expected_behavior": "Should note that SGW is a 4G user plane node (connecting to PGW), whereas SMF is a 5G control plane node connecting to UPF.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 23.501 Clause 6.2.3 and 5.17.1.2 establish that 5G user plane traffic routes via UPF under SMF control over N4, not via SGW-SMF user plane."
+  },
+  {
+    "id": 11,
+    "question": "Explain how the PDN Gateway handles 5G QoS flows.",
+    "type": "adversarial",
+    "expected_behavior": "Should clarify that PDN Gateway (PGW) is a 4G entity, and 5G QoS flows are handled by the UPF.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 23.501 Clause 5.7.1 and 5.7.2 define 5G QoS flows as UPF-managed entities, whereas PGW is a legacy EPS entity handling EPS bearers."
+  },
+  {
+    "id": 12,
+    "question": "What is the message format for a 5G Session Management Tracking Area Update?",
+    "type": "adversarial",
+    "expected_behavior": "Should clarify that Tracking Area Update is an EPS concept, and 5G Session Management handles PDU Session Modification/Establishment.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": true,
+    "borderline": false,
+    "notes": "TS 24.501 Clause 8.3 defines all 5GSM messages (showing no Tracking Area Update exists in 5GSM), while TS 24.301 Clause 8.2.26 defines TAU in EPS mobility management."
+  },
+  {
+    "id": 13,
+    "question": "What is the capital of France?",
+    "type": "out_of_scope",
+    "expected_behavior": "Refusal. System should indicate it only answers 3GPP-related queries.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": false,
+    "notes": null
+  },
+  {
+    "id": 14,
+    "question": "Can you explain how to bake a chocolate cake?",
+    "type": "out_of_scope",
+    "expected_behavior": "Refusal.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": false,
+    "notes": null
+  },
+  {
+    "id": 15,
+    "question": "What is the difference between TCP and UDP?",
+    "type": "out_of_scope",
+    "expected_behavior": "Refusal or state that it is out of scope of 3GPP specs unless specifically referenced as transport.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": true,
+    "notes": "TCP/UDP are referenced as transport protocols within 3GPP specs, so a partial answer grounded in spec references is acceptable. Excluded from hard refusal gate."
+  },
+  {
+    "id": 16,
+    "question": "Who won the World Cup in 2022?",
+    "type": "out_of_scope",
+    "expected_behavior": "Refusal.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": false,
+    "notes": null
+  },
+  {
+    "id": 17,
+    "question": "Write a python script to parse an XML file.",
+    "type": "out_of_scope",
+    "expected_behavior": "Refusal.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": false,
+    "notes": null
+  },
+  {
+    "id": 18,
+    "question": "What are the side effects of aspirin?",
+    "type": "out_of_scope",
+    "expected_behavior": "Refusal.",
+    "gold_clauses": [],
+    "retrieval_scored": false,
+    "corpus_answerable": false,
+    "borderline": false,
+    "notes": null
+  }
+]
