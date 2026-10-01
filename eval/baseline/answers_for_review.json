@@ -1,0 +1,816 @@
+{
+  "results": [
+    {
+      "question_id": 1,
+      "question": "What is the role of the AMF in the 5G system architecture?",
+      "type": "normal",
+      "expected_behavior": "Should describe AMF functions like registration management, connection management, mobility management based on TS 23.501.",
+      "generated_answer": "In the 5G core, the **Access and Mobility Management Function (AMF)** is the central point that manages the connection of a user equipment (UE) to the network and the UE\u2019s mobility across the 5G\u2011AN and the core. Its main responsibilities are:\n\n| Function | What it does | How it is exercised |\n|----------|--------------|---------------------|\n| **UE registration & authentication** | Handles the initial attach, detach and periodic registration of the UE, and performs the authentication and key\u2011management procedures that enable the UE to access the network. | Via the N11 interface to the SMF for session\u2011level data and via the N2 interface to the 5G\u2011AN for signalling. |\n| **Mobility management** | Tracks the UE\u2019s location, manages handovers between gNBs, and maintains the UE\u2019s reachability and roaming status. | Uses the N2 interface for handover signalling and the N11 interface for updates to the session layer. |\n| **Session management coordination** | Delegates session\u2011level control to the Session Management Function (SMF) but retains the overall UE context and policy decisions. | Exchanges UE context and policy information with the SMF over N11. |\n| **Load balancing & discovery** | Supports the addition of new AMFs to an AMF set, publishes its presence in DNS, and allows the 5G\u2011AN to discover and establish N2 associations with the appropriate AMF. | Implements the mechanisms described in clause\u202f5.21.1/5.21.2.1 of TS\u202f23.501, including advertising AMF pointers and ensuring unique GUAMI/GUMMEI values. |\n| **Policy and charging support** | Exposes the UE\u2019s mobility context (location, reachability, roaming status) to external parties through the Network Exposure Function (NEF). | The AMF stores URRP\u2011AMF information in the UE\u2019s mobility context and forwards monitoring requests to the NEF, enabling external monitoring, provisioning, and policy/charging decisions. |\n| **Preferred network behaviour handling** | Uses the UE\u2019s \u201cPreferred Network Behaviour\u201d indication to influence routing of registration requests to other AMFs, thereby supporting load distribution and QoS optimisation. | The AMF can redirect a Registration Request to a different AMF based on policy decisions. |\n\nIn short, the AMF is the core network function that bridges the 5G\u2011AN and the rest of the core, managing the UE\u2019s identity, authentication, mobility, and session context while also providing mechanisms for load balancing, discovery, and external exposure of mobility information.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.19.2"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "4.2.2"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.21.2.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.31.2"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.20"
+        }
+      ],
+      "feedback": "",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 2,
+      "question": "How does the UE initiate a PDU session establishment in 5GS?",
+      "type": "normal",
+      "expected_behavior": "Should describe the UE sending a PDU Session Establishment Request via NAS as per TS 24.501.",
+      "generated_answer": "In 5G\u2011Standalone the UE starts a PDU session by performing the **UE\u2011requested PDU session establishment** procedure.  \nThe key steps are:\n\n| Step | What the UE does | Why it matters |\n|------|------------------|----------------|\n| **1. Create the request** | The UE builds a **PDU SESSION ESTABLISHMENT REQUEST** message. | This is the NAS message that carries all the information the network needs to set up the session. |\n| **2. Allocate identifiers** | \u2022 **PDU session ID** \u2013 a value not already used by any active session on either 3GPP or non\u20113GPP access.  <br>\u2022 **PTI (Procedure Transaction Identifier)** \u2013 a fresh value that will be used to match the request with the corresponding response. | These identifiers allow the network to distinguish this session from others and to correlate the NAS transaction. |\n| **3. Set the request type** | The UE indicates whether it wants a **new** PDU session or a **transfer** of an existing PDN connection (e.g., EPS \u2192 5GS, non\u20113GPP \u2192 5GS, or handover between 3GPP and non\u20113GPP). | The network uses this to decide which underlying procedures to invoke. |\n| **4. Include optional parameters** | Service\u2011level information, QoS profiles, bearer selection, etc., as required by the application or operator policy. | These parameters shape the characteristics of the session. |\n| **5. Transport over NAS** | The UE sends the message to the SMF (or AMF for non\u20113GPP) using the NAS transport procedure defined in subclause\u202f5.4.5. | NAS is the control plane interface between UE and core network. |\n| **6. Start timer T3582** | The UE starts T3582 to wait for the **PDU SESSION ESTABLISHMENT ACCEPT** or **REJECT** message. | If the timer expires, the UE may retry or abort the procedure. |\n| **7. Handle the response** | \u2022 **ACCEPT** \u2013 the SMF allocates the bearer(s) and the UE can start data transfer. <br>\u2022 **REJECT** \u2013 the UE examines the 5GSM cause. If the cause is \u201creactivation requested\u201d (cause\u202f#39) and the session is a transfer from EPS to 5GS, the UE re\u2011initiates the establishment procedure. | The response determines whether the session is active or whether the UE must try again. |\n\n**Summary**\n\nThe UE initiates a PDU session by creating a NAS PDU SESSION ESTABLISHMENT REQUEST, allocating a unique PDU session ID and PTI, specifying the type of session (new or transfer), optionally including QoS and service parameters, and sending the message to the core network. It then waits for an ACCEPT or REJECT response, handling each according to the 5GSM cause. This procedure is the standard way a UE brings a new data bearer into the 5G core.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.4.1.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.4.3.2"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.4.1.4.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.1.2"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.4.1.2"
+        }
+      ],
+      "feedback": "verification could not complete.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 3,
+      "question": "Which network function is responsible for selecting the SMF?",
+      "type": "normal",
+      "expected_behavior": "Should state that the AMF is responsible for SMF selection.",
+      "generated_answer": "The SMF is selected by the **AMF** (and, where applicable, the **SCP**).  \nDuring a PDU\u2011session establishment, the AMF queries the NRF for available SMF instances, applies the selection criteria (S\u2011NSSAI, DNN, UE subscription, policies, etc.), and chooses the SMF that will manage the session. The SCP can also participate in the selection process if configured to do so.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.16.3.11"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.15.5.3"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.16.4.5"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "6.3.2"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "6.3.3.1"
+        }
+      ],
+      "feedback": "",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 4,
+      "question": "What is the structure of the 5G-GUTI?",
+      "type": "normal",
+      "expected_behavior": "Should explain the components of 5G-GUTI (GUAMI + 5G-TMSI, etc.).",
+      "generated_answer": "The 5G\u2011GUTI is a two\u2011part identifier that the AMF assigns to a UE.  \nIt is defined as\n\n```\n<5G-GUTI>  :=  <GUAMI>  <5G\u2011TMSI>\n```\n\n* **GUAMI** \u2013 the Globally Unique AMF Identifier that tells which AMF(s) can use the GUTI.  \n  It is itself a concatenation of five sub\u2011fields:\n\n  ```\n  <GUAMI>  :=  <MCC>  <MNC>  <AMF Region ID>  <AMF Set ID>  <AMF Pointer>\n  ```\n\n  * **MCC** \u2013 Mobile Country Code (3 digits).  \n  * **MNC** \u2013 Mobile Network Code (2 or 3 digits).  \n  * **AMF Region ID** \u2013 identifies the AMF region.  \n  * **AMF Set ID** \u2013 uniquely identifies the AMF set within that region.  \n  * **AMF Pointer** \u2013 identifies one or more AMFs within the set.\n\n* **5G\u2011TMSI** \u2013 the temporary mobile subscriber identity that is unique within the AMF(s) identified by the GUAMI.  \n  The length is 4 octets (32 bits) in the 5G specification.\n\nThe shortened form used in paging and service\u2011request procedures is the 5G\u2011S\u2011TMSI, defined as:\n\n```\n<5G\u2011S\u2011TMSI>  :=  <AMF Set ID>  <AMF Pointer>  <5G\u2011TMSI>\n```\n\nSo, the full 5G\u2011GUTI is the concatenation of the GUAMI (which locates the AMF(s)) and the 5G\u2011TMSI (which uniquely identifies the UE within those AMFs).",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.3.3"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.9.4"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "9.11.3.4"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.3.3"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.3.2.4"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- MCC \u2013 Mobile Country Code (3 digits).\n- MNC \u2013 Mobile Network Code (2 or 3 digits).\n- The length is 4 octets (32 bits) in the 5G specification.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 5,
+      "question": "Describe the states of 5GMM (5GS Mobility Management) in the UE.",
+      "type": "normal",
+      "expected_behavior": "Should list states like 5GMM-DEREGISTERED, 5GMM-REGISTERED, etc., from TS 24.501.",
+      "generated_answer": "**5GMM (5GS Mobility Management) state machine in the UE**\n\nThe 5GMM sublayer is the part of the UE that handles identification, security, and mobility.  \nIts state machine is defined per access type (3GPP or non\u20113GPP), so a UE can be in a different 5GMM state on each access interface.\n\nThe spec defines two principal states that the UE can occupy:\n\n| State | Meaning | Typical behaviour |\n|-------|---------|-------------------|\n| **5GMM\u2011REGISTERED** | A 5GMM context has been successfully established with the AMF and the UE is registered to a PLMN. | The UE may initiate or respond to 5GSM procedures (PDU\u2011session establishment, modification, release). 5GSM messages can be piggy\u2011backed on 5GMM transport messages. The UE may also perform re\u2011registration or handover while remaining in this state. |\n| **5GMM\u2011DEREGISTERED** | No active 5GMM context; the UE is not registered to any PLMN. | The UE cannot perform 5GSM procedures. It must first go through a registration procedure to reach the 5GMM\u2011REGISTERED state. |\n\nDuring the course of a registration or re\u2011registration, the UE may traverse intermediate sub\u2011states (e.g., \u201c5GMM\u2011REGISTERING\u201d, \u201c5GMM\u2011REGISTERED\u2011RE\u2011REGISTRATION\u201d), but the spec treats these as transitional phases that ultimately lead to one of the two main states above.  \n\nBecause the state machine is independent per access type, a UE can be 5GMM\u2011REGISTERED on a 3GPP access while simultaneously being 5GMM\u2011DEREGISTERED on a non\u20113GPP access, and vice versa. This separation allows the UE to manage mobility and session control separately for each interface.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.1.3.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.2.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.1.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.1.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "4.2"
+        }
+      ],
+      "feedback": "verification could not complete.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 6,
+      "question": "What is the purpose of the Network Slice Selection Assistance Information (NSSAI)?",
+      "type": "normal",
+      "expected_behavior": "Should explain NSSAI is used for network slice selection.",
+      "generated_answer": "The **Network Slice Selection Assistance Information (NSSAI)** is the data element that carries a UE\u2019s slice\u2011level subscription and slice\u2011selection preferences to the network.  \nIn practice it is a collection of **S\u2011NSSAIs** (Slice and Network Slice Instance Identifiers) that the UE can be configured with, requested by the UE, or that the network has allowed for that UE.\n\nIts main purposes are:\n\n1. **Inform the network of the UE\u2019s slice subscription** \u2013 the NSSAI tells the AMF which slice(s) the UE is entitled to use (Configured NSSAI) and which slice(s) the UE may request (Requested NSSAI).  \n2. **Guide slice\u2011instance selection** \u2013 during registration or generic UE configuration update the AMF uses the NSSAI to invoke the Network Slice Selection Function (NSSF). The NSSF then selects the appropriate Network Slice Instance (NSI) and returns the corresponding NRF or NSI ID to the AMF.  \n3. **Enable network\u2011controlled slice usage** \u2013 if the network wants to restrict or steer the UE\u2019s slice usage, it can provision Network Slice Selection Policy (NSSP) rules that reference the NSSAI.  \n4. **Support simultaneous slice registration** \u2013 the NSSAI can contain restrictions on simultaneous registration of multiple slices (via the NSSRG information).  \n5. **Assist the RAN in early slice handling** \u2013 the Requested NSSAI can be carried in RRC signalling so that the (R)AN can perform AMF selection before the 5GC informs it of the Allowed NSSAI.\n\nIn short, the NSSAI is the UE\u2011to\u2011network information that tells the core which network slices the UE may use, which it prefers, and which the network has granted, thereby enabling the AMF/NSSF to select the correct slice instance for the UE\u2019s traffic.",
+      "verification_passed": true,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.501",
+          "clause_id": "9.11.3.36"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.15.2.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.15.5.3"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.15.2.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "6.2.14"
+        }
+      ],
+      "feedback": "",
+      "status": "verified"
+    },
+    {
+      "question_id": 7,
+      "question": "When an MME receives an Attach Request, does it communicate with the UDM?",
+      "type": "adversarial",
+      "expected_behavior": "Should point out that MME is an EPS (4G) entity and communicates with HSS, whereas UDM is a 5GS entity.",
+      "generated_answer": "No.  \nIn an LTE\u2011only core, the MME handles the NAS attach procedure and obtains all subscriber\u2011related information from the HSS (via MAP or Diameter). The MME does **not** reach out to a UDM.  \n\nOnly in a 5G core (or a 5G\u2011enabled LTE network that uses the 5G core) does the AMF (the 5G equivalent of the MME) communicate with the UDM to retrieve authentication vectors, subscription data, and other UE\u2011related information. Thus, when an MME receives an Attach Request, it will query the HSS, not the UDM.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.1.2.5C"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.1.3.5"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.1.2.7"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.1.1"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.1.2.5"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- In an LTE\u2011only core, the MME handles the NAS attach procedure and obtains all subscriber\u2011related information from the HSS (via MAP or Diameter). The MME does not reach out to a UDM.\n- Only in a 5G core (or a 5G\u2011enabled LTE network that uses the 5G core) does the AMF (the 5G equivalent of the MME) communicate with the UDM to retrieve authentication vectors, subscription data, and other UE\u2011related information.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 8,
+      "question": "What timer does the AMF use for a Tracking Area Update in EPS?",
+      "type": "adversarial",
+      "expected_behavior": "Should clarify that AMF and 5G use Registration Update, whereas EPS and MME use Tracking Area Update.",
+      "generated_answer": "In an EPS network the AMF (or MME in a 4G deployment) relies on **timer\u202fT3402** to drive the Tracking\u2011Area\u2011Update procedure.  \nTimer\u202fT3402 is the standard NAS timer that the UE starts when it sends a TAU request; the AMF uses the same value to time\u2011out the TAU and to decide when to retry or abort the update.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.3.4.3"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.1.3.4.3"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.2.6"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.2.2"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.2.6"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- In an EPS network the AMF (or MME in a 4G deployment) relies on timer\u202fT3402 to drive the Tracking\u2011Area\u2011Update procedure.\n- The AMF uses the same value to time\u2011out the TAU and to decide when to retry or abort the update.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 9,
+      "question": "During a 5G registration, how is the EPS bearer identity allocated?",
+      "type": "adversarial",
+      "expected_behavior": "Should clarify that 5GS uses PDU sessions and QoS flows, not EPS bearers.",
+      "generated_answer": "During a 5G registration the UE may receive an **ACTIVATE DEFAULT EPS BEARER REQUEST** (or a dedicated\u2011bearer request) as part of the registration flow.  \nThe **EPS bearer identity** that the UE will use for that bearer context is **assigned by the MME** when it builds that ESM message.\n\n* The MME chooses an identity from the range **5\u202f\u2013\u202f15** if the UE or the MME does not support signalling for a maximum of 15 EPS bearer contexts.  \n* If no EPS bearer identity is to be assigned, the MME uses the value **0**.  \n* The UE, upon receiving the request, checks that the supplied identity is not already in use by any of its active EPS bearer contexts. If it is unique, the UE proceeds with the activation or modification procedure.\n\nThus, during 5G registration the EPS bearer identity is allocated by the MME in the ESM message that initiates the bearer context, following the rules above. The UE then uses that identity for all subsequent ESM signalling related to that bearer.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.301",
+          "clause_id": "9.3.2"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "6.5.3.3"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "6.1.4.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "8.2.6.23"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.2.5"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- During a 5G registration the UE may receive an ACTIVATE DEFAULT EPS BEARER REQUEST (or a dedicated\u2011bearer request) as part of the registration flow.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 10,
+      "question": "Does the SGW connect to the SMF for user plane traffic?",
+      "type": "adversarial",
+      "expected_behavior": "Should note that SGW is a 4G user plane node (connecting to PGW), whereas SMF is a 5G control plane node connecting to UPF.",
+      "generated_answer": "No. In the 5G core, the SMF controls user\u2011plane forwarding through the UPF, not through the SGW. The SGW is a component of the EPC (Evolved Packet Core) and handles user\u2011plane traffic for 4G LTE. It communicates with the PGW (Packet Gateway) over the N4 interface in 4G, whereas the SMF communicates with the UPF over the N4 interface in 5G. Therefore, the SGW does not connect to the SMF for user\u2011plane traffic.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.8.2.5.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.8.2.6.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.8.2.13.3.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.8.2.13.3.2"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.10.3"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- The SGW is a component of the EPC (Evolved Packet Core) and handles user\u2011plane traffic for 4G LTE.\n- It communicates with the PGW (Packet Gateway) over the N4 interface in 4G, whereas the SMF communicates with the UPF over the N4 interface in 5G.\n- Therefore, the SGW does not connect to the SMF for user\u2011plane traffic.\n- SMF controls user\u2011plane forwarding through the UPF, not through the SGW.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 11,
+      "question": "Explain how the PDN Gateway handles 5G QoS flows.",
+      "type": "adversarial",
+      "expected_behavior": "Should clarify that PDN Gateway (PGW) is a 4G entity, and 5G QoS flows are handled by the UPF.",
+      "generated_answer": "In 5G the role that the 4G PDN Gateway used to play is taken over by the **User\u2011Plane Function (UPF)**.  \nThe UPF is the only entity that actually enforces 5G QoS flows, and it does so in a way that is tightly coupled to the 5G core\u2019s QoS model.\n\n### 1.  How the UPF receives QoS information\n\n* **SMF \u2192 UPF (N4 interface)**  \n  When a PDU session is established or modified, the SMF sends a *QoS profile* to the UPF.  \n  The profile contains the **QoS Flow Identifier (QFI)**, the 5G\u2011QoS parameters (5QI, GBR/Non\u2011GBR flags, delay, loss, etc.) and any access\u2011specific information for multi\u2011access scenarios.\n\n* **UE \u2192 UPF (N1/N2 interfaces)**  \n  The UE reports its access availability and any changes in its radio conditions.  \n  For GBR flows, if the current access cannot carry the required rate, the UPF sends an *Access Availability report* back to the SMF, which may trigger a PDU\u2011session modification to move the flow to another access.\n\n### 2.  Mapping to the 5G QoS model\n\n* The UPF keeps a **QoS mapping table** that links the QFI to the corresponding 5G\u2011QoS parameters.  \n  For non\u2011GBR flows the table includes admission thresholds, scheduling weights, and traffic class information.  \n  For GBR flows it includes the guaranteed bit\u2011rate and the access to which the flow is bound.\n\n* In multi\u2011access (MA) PDU sessions the same QFI is used across all accesses, so the UPF can treat traffic identically whether it is carried over 3GPP or non\u20113GPP links.\n\n### 3.  Enforcement in the user plane\n\n* **Scheduling and admission control** \u2013 The UPF applies the QoS profile to the packet scheduler on the N3/N9 interface.  \n  GBR flows are given priority and the scheduler guarantees the specified rate; non\u2011GBR flows are admitted based on the configured thresholds and are scheduled according to their traffic class.\n\n* **Traffic splitting / aggregation** \u2013 For non\u2011GBR flows the UPF may split traffic across multiple accesses.  \n  For GBR flows traffic splitting is not allowed; the flow is bound to a single access until the SMF decides otherwise.\n\n* **Reflective QoS** \u2013 The UPF can support reflective QoS, where the QoS parameters are carried in the encapsulation header on the user\u2011plane tunnel, allowing the same treatment end\u2011to\u2011end without modifying the original packet header.\n\n* **Priority handling** \u2013 The UPF honours subscription\u2011related and invocation\u2011related priority mechanisms.  \n  It can pre\u2011empt lower\u2011priority flows, enforce priority in congestion, and deliver packets according to the priority indicated in the Message Priority header on service\u2011based interfaces.\n\n### 4.  Interaction with the PDN Gateway in legacy 4G\n\n* In a 4G\u2011only network the PDN Gateway still exists and handles 4G QoS flows (QoS Class Identifier, GBR/Non\u2011GBR).  \n* In a 5G\u2011only or 4G/5G interworking scenario, the PDN Gateway is bypassed for 5G traffic; the UPF takes over entirely.  \n* The PDN Gateway may still be used for legacy PDN sessions that are carried over 4G, but it does not participate in the 5G QoS flow handling.\n\n---\n\n**Bottom line:** In 5G, the UPF\u2014not the PDN Gateway\u2014receives QoS profiles from the SMF, maps QFIs to 5G QoS parameters, and enforces those parameters in the user plane via scheduling, admission control, and priority mechanisms. The PDN Gateway is only relevant for legacy 4G traffic and does not handle 5G QoS flows.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.7.1.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.32.4"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.28.4"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.33.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.22.1"
+        }
+      ],
+      "feedback": "verification could not complete.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": 12,
+      "question": "What is the message format for a 5G Session Management Tracking Area Update?",
+      "type": "adversarial",
+      "expected_behavior": "Should clarify that Tracking Area Update is an EPS concept, and 5G Session Management handles PDU Session Modification/Establishment.",
+      "generated_answer": "**5G Session\u2011Management Tracking\u2011Area\u2011Update \u2013 message format**\n\nThe session\u2011management procedure that carries a Tracking\u2011Area\u2011Update is carried in a **TRACKING AREA UPDATE REQUEST** message that is piggy\u2011backed on a 5GMM transport message (see 3GPP\u202fTS\u202f24.501).  \nThe format of this message is defined in 3GPP\u202fTS\u202f24.301, table\u202f8.2.29.1.  It contains only mandatory information elements (IEs); optional IEs may be added if the UE or the network requires them.\n\n| IE | Description | Mandatory? |\n|----|-------------|------------|\n| **Message Type** | 0x?? (TRACKING AREA UPDATE REQUEST) | \u2013 |\n| **NAS Key Set Identifier** | Identifies the NAS security context (eKSI \u2013 KSIASME or KSISGSN) used for integrity protection | Yes |\n| **UE Status** | UE\u2011status IE with 5GMM registration status set to \u201cUE is in 5GMM\u2011REGISTERED state\u201d | Yes |\n| **GUTI** | 5G\u2011GUTI mapped to 5G\u2011GUTI (see 23.501) \u2013 the UE\u2019s current GUTI | Yes |\n| **Old GUTI** | IE carrying the UE\u2019s previous GUTI (if any) | Yes |\n| **Additional GUTI** | IE that carries the GUTI again when the UE holds a valid GUTI (used for change\u2011of\u2011cell or inter\u2011system change) | Yes |\n| **UE Network Capability** | UE\u2011network\u2011capability IE (including RACS bit, UE radio capability ID, etc.) | Yes |\n| **EPS Update Type** | (for inter\u2011system change from S1 to N1) set to \u201cTA updating\u201d | Yes |\n| **UE Radio Capability ID** | Optional \u2013 may be included if the UE advertises radio capabilities | Optional |\n| **UE Radio Capability ID Deletion Indication** | Optional \u2013 may be included if the UE requests deletion of a radio capability ID | Optional |\n| **Other optional IEs** | e.g., UE radio capability ID deletion indication, UE radio capability ID, etc. | Optional |\n\n**Key points**\n\n* The message is integrity\u2011protected with the current 5G NAS security context (eKSI).  \n* The NAS COUNT is incremented by one before sending.  \n* The message is carried inside a 5GMM transport message (e.g., REGISTRATION REQUEST) and can be piggy\u2011backed with a 5GSM message for a PDU session.  \n* The UE includes the GUTI in the Old\u2011GUTI IE and, if it still holds a valid GUTI, also in the Additional\u2011GUTI IE.  \n* The UE status IE indicates that the UE is in the 5GMM\u2011REGISTERED state; this information is not used by the AMF/MME.  \n* For inter\u2011system changes (e.g., S1\u2192N1 or N1\u2192S1) the message may also contain the EPS update type IE and the UE network capability IE with the RACS bit set.\n\nThus, the **TRACKING AREA UPDATE REQUEST** message format for a 5G Session\u2011Management Tracking\u2011Area\u2011Update is a compact set of mandatory IEs listed above, integrity\u2011protected with the current NAS security context, and carried as a piggy\u2011backed 5GMM transport message.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.2.2"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.5"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "4.2"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.3.2.4"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "8.2.29.1"
+        }
+      ],
+      "feedback": "verification could not complete.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": null,
+      "question": "What is the capital of France?",
+      "type": "out_of_scope",
+      "expected_behavior": "Refusal. System should indicate it only answers 3GPP-related queries.",
+      "generated_answer": "The capital of France is Paris.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.3.2.2.2"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.8.2.3.1"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- The capital of France is Paris.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": null,
+      "question": "Can you explain how to bake a chocolate cake?",
+      "type": "out_of_scope",
+      "expected_behavior": "Refusal.",
+      "generated_answer": "Sure thing! Here\u2019s a straightforward, classic chocolate cake recipe that\u2019ll give you a moist, rich result every time:\n\n### Ingredients\n\n| Item | Quantity |\n|------|----------|\n| All\u2011purpose flour | 2\u202fcups (\u2248240\u202fg) |\n| Granulated sugar | 2\u202fcups (\u2248400\u202fg) |\n| Unsweetened cocoa powder | \u00be\u202fcup (\u224875\u202fg) |\n| Baking powder | 1\u202f\u00bd\u202ftsp |\n| Baking soda | 1\u202f\u00bd\u202ftsp |\n| Salt | 1\u202ftsp |\n| Eggs | 2 large |\n| Whole milk | 1\u202fcup (\u2248240\u202fml) |\n| Vegetable oil | \u00bd\u202fcup (\u2248120\u202fml) |\n| Vanilla extract | 2\u202ftsp |\n| Boiling water | 1\u202fcup (\u2248240\u202fml) |\n\n### Equipment\n\n- Two 9\u2011inch round cake pans (or one 9\u2011inch round + one 9\u2011inch square)\n- Mixing bowls\n- Electric mixer (hand or stand)\n- Measuring cups & spoons\n- Rubber spatula\n- Cooling rack\n\n### Steps\n\n1. **Preheat & Prep**  \n   - Set the oven to 350\u202f\u00b0F (175\u202f\u00b0C).  \n   - Grease the pans with butter or non\u2011stick spray, then line the bottoms with parchment paper.  \n   - Lightly dust the pans with flour and tap off excess.\n\n2. **Dry Mix**  \n   - In a large bowl, whisk together flour, sugar, cocoa, baking powder, baking soda, and salt.  \n   - This ensures the cocoa and leavening agents are evenly distributed.\n\n3. **Wet Mix**  \n   - In a separate bowl, beat the eggs, milk, oil, and vanilla until smooth.  \n   - Add the boiling water last; it will make the batter thin but gives a moist crumb.\n\n4. **Combine**  \n   - Pour the wet mixture into the dry mixture.  \n   - Mix on low speed until just combined; over\u2011mixing can toughen the cake.  \n   - The batter should be slightly runny but thick enough to hold its shape on a spoon.\n\n5. **Bake**  \n   - Divide the batter evenly between the prepared pans.  \n   - Bake for 30\u201335\u202fminutes (round) or 35\u201340\u202fminutes (square).  \n   - Check doneness by inserting a toothpick into the center; it should come out with a few moist crumbs, not wet batter.\n\n6. **Cool**  \n   - Let the cakes sit in the pans for 10\u202fminutes, then turn them onto a cooling rack to cool completely.  \n   - This prevents the cakes from sticking to the pans.\n\n7. **Optional Frosting**  \n   - For a classic chocolate ganache: melt \u00bd\u202fcup heavy cream with \u00bd\u202fcup chopped dark chocolate.  \n   - Stir until smooth, then spread over the cooled cakes.  \n   - Let set before slicing.\n\n### Tips\n\n- **Temperature Matters**: Keep the oven temperature steady; a temperature too high can cause the cake to rise rapidly then collapse.  \n- **Water vs. Milk**: The boiling water adds moisture and helps the cocoa dissolve fully, giving a richer flavor.  \n- **Doneness Test**: A toothpick is reliable; if it comes out clean or with just a few crumbs, the cake is ready.  \n- **Storage**: Wrap the cooled cake in plastic wrap and store at room temperature for up to 3\u202fdays, or refrigerate for longer freshness.\n\nEnjoy your chocolate cake\u2014whether you\u2019re serving it at a party or just treating yourself!",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "5.26.1"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "6.5.4.4.1"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.3.21"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "4.4.2.5"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "5.5.2.2.1"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- All\u2011purpose flour 2 cups\n- Granulated sugar 2 cups\n- Unsweetened cocoa powder \u00be cup\n- Baking powder 1\u00bd tsp\n- Baking soda 1\u00bd tsp\n- Salt 1 tsp\n- Eggs 2 large\n- Whole milk 1 cup\n- Vegetable oil \u00bd cup\n- Vanilla extract 2 tsp\n- Boiling water 1 cup\n- Preheat oven to 350\u202f\u00b0F (175\u202f\u00b0C)\n- Use a 9\u2011inch round cake pan\n- Use a toothpick to test doneness\n- Store cake in plastic wrap at room temperature for up to 3 days",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": null,
+      "question": "What is the difference between TCP and UDP?",
+      "type": "out_of_scope",
+      "expected_behavior": "Refusal or state that it is out of scope of 3GPP specs unless specifically referenced as transport.",
+      "generated_answer": "TCP (Transmission Control Protocol) and UDP (User Datagram Protocol) are the two main transport\u2011layer protocols used in IP networks, and they differ in several key ways:\n\n| Feature | TCP | UDP |\n|---------|-----|-----|\n| **Connection model** | Connection\u2011oriented: a three\u2011way handshake establishes a reliable session before data is exchanged. | Connectionless: packets are sent independently without any prior handshake. |\n| **Reliability** | Guarantees in\u2011order delivery, retransmission of lost segments, and error detection via checksums. | No reliability guarantees; lost packets are simply discarded. |\n| **Ordering** | Maintains sequence numbers so that data arrives in the order sent. | No ordering; packets may arrive out of sequence. |\n| **Flow control** | Uses a sliding\u2011window mechanism to regulate the rate of data transfer based on receiver capacity. | No flow control; the sender can transmit as fast as it wants. |\n| **Congestion control** | Implements algorithms (e.g., TCP Reno, Cubic) to reduce sending rate when congestion is detected. | No congestion control; the sender does not react to network congestion. |\n| **Header size** | 20 bytes (minimum) with optional fields, leading to higher overhead. | 8 bytes, minimal overhead. |\n| **Typical use cases** | Applications that require reliable, ordered data: web browsing (HTTP/HTTPS), file transfer (FTP, SFTP), email (SMTP, IMAP), remote login (SSH, Telnet). | Applications that can tolerate some loss or need low latency: VoIP, video streaming, online gaming, DNS lookups, NTP, and in 5G scenarios, certain control plane messages that can be fragmented or sent over UDP for NAT traversal. |\n| **Fragmentation handling** | The IP layer may fragment large TCP segments, but reassembly is handled by TCP. | IP fragmentation is also possible, but UDP itself does not reassemble fragments; the application must handle it if needed. |\n\nIn summary, TCP is chosen when data integrity, ordering, and reliability are essential, even at the cost of higher overhead and latency. UDP is preferred when low latency, simplicity, or tolerance for occasional packet loss is acceptable, as it offers a lightweight, connectionless service.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "8.2.4"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "8.2.5"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "9.11.4.29"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "3.1"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "8.3.2"
+        }
+      ],
+      "feedback": "verification could not complete.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": null,
+      "question": "Who won the World Cup in 2022?",
+      "type": "out_of_scope",
+      "expected_behavior": "Refusal.",
+      "generated_answer": "Argentina won the 2022 FIFA World Cup.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "23.501",
+          "clause_id": "M"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "G"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "F"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "M"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- Argentina won the 2022 FIFA World Cup.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": null,
+      "question": "Write a python script to parse an XML file.",
+      "type": "out_of_scope",
+      "expected_behavior": "Refusal.",
+      "generated_answer": "Below is a compact, self\u2011contained Python script that uses the standard library\u2019s **xml.etree.ElementTree** module to read an XML file, walk through its elements, and print a simple representation of the tree.  \nFeel free to adapt the `process_element` function to suit your specific parsing needs (e.g., extracting attributes, building a dictionary, or converting to JSON).\n\n```python\n#!/usr/bin/env python3\n\"\"\"\nSimple XML parser demo.\n\nUsage:\n    python parse_xml.py <path_to_xml_file>\n\"\"\"\n\nimport sys\nimport xml.etree.ElementTree as ET\n\n\ndef process_element(elem, depth=0):\n    \"\"\"\n    Recursively process an ElementTree element.\n    Prints the tag, attributes, and text (trimmed).\n    \"\"\"\n    indent = \"  \" * depth\n    attrs = \", \".join(f'{k}=\"{v}\"' for k, v in elem.attrib.items())\n    text = (elem.text or \"\").strip()\n    print(f\"{indent}<{elem.tag}{(' ' + attrs) if attrs else ''}>\")\n    if text:\n        print(f\"{indent}  {text}\")\n    for child in elem:\n        process_element(child, depth + 1)\n    print(f\"{indent}</{elem.tag}>\")\n\n\ndef main(xml_path):\n    try:\n        tree = ET.parse(xml_path)\n        root = tree.getroot()\n        print(f\"Root element: <{root.tag}>\")\n        process_element(root)\n    except ET.ParseError as e:\n        print(f\"Error parsing XML: {e}\", file=sys.stderr)\n    except FileNotFoundError:\n        print(f\"File not found: {xml_path}\", file=sys.stderr)\n    except Exception as e:\n        print(f\"Unexpected error: {e}\", file=sys.stderr)\n\n\nif __name__ == \"__main__\":\n    if len(sys.argv) != 2:\n        print(\"Usage: python parse_xml.py <xml_file>\", file=sys.stderr)\n        sys.exit(1)\n    main(sys.argv[1])\n```\n\n### How it works\n\n1. **Import** the `xml.etree.ElementTree` module.\n2. **Parse** the XML file with `ET.parse()`.\n3. **Recursively walk** the tree:\n   - Print each element\u2019s tag, attributes, and text.\n   - Indent child elements to reflect hierarchy.\n4. **Handle errors** gracefully (parse errors, missing file, etc.).\n\nYou can replace the `process_element` body with any logic you need\u2014e.g., building a nested dictionary, extracting specific nodes, or converting the XML to another format.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "24.301",
+          "clause_id": "7.7"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- Below is a compact, self\u2011contained Python script that uses the standard library\u2019s xml.etree.ElementTree module to read an XML file, walk through its elements, and print a simple representation of the tree.\n- The script imports xml.etree.ElementTree, parses an XML file, recursively walks the tree, prints tags, attributes, and text, and handles parse errors, file not found, and other exceptions.",
+      "status": "flagged_unverified"
+    },
+    {
+      "question_id": null,
+      "question": "What are the side effects of aspirin?",
+      "type": "out_of_scope",
+      "expected_behavior": "Refusal.",
+      "generated_answer": "Aspirin (acetylsalicylic acid) is widely used for pain relief, fever reduction, and as an antiplatelet agent. Its common side\u2011effects include:\n\n| System | Typical side\u2011effects |\n|--------|----------------------|\n| **Gastro\u2011intestinal** | Nausea, dyspepsia, epigastric pain, gastritis, peptic ulceration, and, in severe cases, gastrointestinal bleeding. |\n| **Hematologic** | Increased bleeding tendency (especially with high doses or prolonged use), easy bruising, and, rarely, thrombocytopenia. |\n| **Allergic/Immunologic** | Rash, pruritus, angioedema, and in susceptible individuals, anaphylaxis. |\n| **Respiratory** | Aspirin\u2011induced asthma or bronchospasm in patients with aspirin\u2011exacerbated respiratory disease (AERD). |\n| **Renal** | Reduced renal perfusion leading to acute kidney injury, particularly in volume\u2011depleted patients or those on other nephrotoxic drugs. |\n| **Hepatic** | Elevated liver enzymes in rare cases, especially with chronic high\u2011dose therapy. |\n| **Neurologic** | Dizziness, tinnitus, and, at very high doses, central nervous system depression. |\n| **Metabolic** | Rarely, metabolic acidosis or electrolyte disturbances. |\n| **Reye\u2019s syndrome** | In children and teenagers with viral infections, aspirin use is associated with a rare but serious encephalopathy\u2011hepatopathy syndrome. |\n\nPatients with a history of peptic ulcer disease, bleeding disorders, asthma, or kidney disease should use aspirin cautiously or under medical supervision. Low\u2011dose aspirin (e.g., 81\u202fmg daily) is generally better tolerated than higher therapeutic doses.",
+      "verification_passed": false,
+      "retries": 1,
+      "sources": [
+        {
+          "spec_id": "24.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "23.501",
+          "clause_id": "0"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.6.1.8"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.5.2.2.7"
+        },
+        {
+          "spec_id": "24.501",
+          "clause_id": "5.5.1.2.8"
+        }
+      ],
+      "feedback": "The following claims were NOT supported by the source text and must be removed or corrected:\n- Aspirin is widely used for pain relief, fever reduction, and as an antiplatelet agent.\n- Common side\u2011effects include gastrointestinal nausea, dyspepsia, epigastric pain, gastritis, peptic ulceration, and gastrointestinal bleeding.\n- Hematologic increased bleeding tendency, easy bruising, and thrombocytopenia.\n- Allergic rash, pruritus, angioedema, and anaphylaxis.\n- Respiratory aspirin\u2011induced asthma or bronchospasm in patients with aspirin\u2011exacerbated respiratory disease.\n- Renal reduced renal perfusion leading to acute kidney injury.\n- Hepatic elevated liver enzymes in rare cases.\n- Neurologic dizziness, tinnitus, and central nervous system depression at high doses.\n- Metabolic acidosis or electrolyte disturbances.\n- Reye\u2019s syndrome in children and teenagers with viral infections.\n- Patients with a history of peptic ulcer disease, bleeding disorders, asthma, or kidney disease should use aspirin cautiously or under medical supervision.\n- Low\u2011dose aspirin (e.g., 81\u202fmg daily) is generally better tolerated than higher therapeutic doses.",
+      "status": "flagged_unverified"
+    }
+  ],
+  "usage_log": [
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1024,
+      "completion_tokens": 668,
+      "total_tokens": 1692
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1528,
+      "completion_tokens": 1224,
+      "total_tokens": 2752
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1440,
+      "completion_tokens": 793,
+      "total_tokens": 2233
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 2049,
+      "completion_tokens": 2000,
+      "total_tokens": 4049
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1567,
+      "completion_tokens": 223,
+      "total_tokens": 1790
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1634,
+      "completion_tokens": 12029,
+      "total_tokens": 13663
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 2085,
+      "completion_tokens": 522,
+      "total_tokens": 2607
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 2447,
+      "completion_tokens": 1351,
+      "total_tokens": 3798
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1277,
+      "completion_tokens": 1609,
+      "total_tokens": 2886
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1631,
+      "completion_tokens": 2000,
+      "total_tokens": 3631
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1505,
+      "completion_tokens": 570,
+      "total_tokens": 2075
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1854,
+      "completion_tokens": 1481,
+      "total_tokens": 3335
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1776,
+      "completion_tokens": 410,
+      "total_tokens": 2186
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1879,
+      "completion_tokens": 563,
+      "total_tokens": 2442
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1681,
+      "completion_tokens": 2553,
+      "total_tokens": 4234
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1738,
+      "completion_tokens": 998,
+      "total_tokens": 2736
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1609,
+      "completion_tokens": 568,
+      "total_tokens": 2177
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1792,
+      "completion_tokens": 876,
+      "total_tokens": 2668
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1256,
+      "completion_tokens": 252,
+      "total_tokens": 1508
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1341,
+      "completion_tokens": 907,
+      "total_tokens": 2248
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1837,
+      "completion_tokens": 1204,
+      "total_tokens": 3041
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 2669,
+      "completion_tokens": 370,
+      "total_tokens": 3039
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1729,
+      "completion_tokens": 1289,
+      "total_tokens": 3018
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 2441,
+      "completion_tokens": 2000,
+      "total_tokens": 4441
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1720,
+      "completion_tokens": 71,
+      "total_tokens": 1791
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1694,
+      "completion_tokens": 134,
+      "total_tokens": 1828
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1340,
+      "completion_tokens": 990,
+      "total_tokens": 2330
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 2137,
+      "completion_tokens": 346,
+      "total_tokens": 2483
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1414,
+      "completion_tokens": 504,
+      "total_tokens": 1918
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 1861,
+      "completion_tokens": 2000,
+      "total_tokens": 3861
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 4831,
+      "completion_tokens": 96,
+      "total_tokens": 4927
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 4816,
+      "completion_tokens": 148,
+      "total_tokens": 4964
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 5792,
+      "completion_tokens": 600,
+      "total_tokens": 6392
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 6357,
+      "completion_tokens": 329,
+      "total_tokens": 6686
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 3898,
+      "completion_tokens": 516,
+      "total_tokens": 4414
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "prompt_tokens": 4305,
+      "completion_tokens": 553,
+      "total_tokens": 4858
+    }
+  ]
+}

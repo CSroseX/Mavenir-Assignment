@@ -1,0 +1,67 @@
+{
+  "n_runs": 15,
+  "p50_seconds": 1.7604456000262871,
+  "p95_seconds": 2.27599100000225,
+  "latencies": [
+    {
+      "query": "What is the role of the AMF in the 5G system architecture?",
+      "latency_seconds": 1.6657771999016404
+    },
+    {
+      "query": "What is the role of the AMF in the 5G system architecture?",
+      "latency_seconds": 1.6530977999791503
+    },
+    {
+      "query": "What is the role of the AMF in the 5G system architecture?",
+      "latency_seconds": 1.6032902000006288
+    },
+    {
+      "query": "Which network function is responsible for selecting the SMF?",
+      "latency_seconds": 1.7341209000442177
+    },
+    {
+      "query": "Which network function is responsible for selecting the SMF?",
+      "latency_seconds": 1.7604456000262871
+    },
+    {
+      "query": "Which network function is responsible for selecting the SMF?",
+      "latency_seconds": 1.7772718999767676
+    },
+    {
+      "query": "What timer does the AMF use for a Tracking Area Update in EPS?",
+      "latency_seconds": 1.7348461999790743
+    },
+    {
+      "query": "What timer does the AMF use for a Tracking Area Update in EPS?",
+      "latency_seconds": 1.699529099976644
+    },
+    {
+      "query": "What timer does the AMF use for a Tracking Area Update in EPS?",
+      "latency_seconds": 1.6478543999837711
+    },
+    {
+      "query": "Who won the World Cup in 2022?",
+      "latency_seconds": 2.1412645999807864
+    },
+    {
+      "query": "Who won the World Cup in 2022?",
+      "latency_seconds": 2.1706047999905422
+    },
+    {
+      "query": "Who won the World Cup in 2022?",
+      "latency_seconds": 2.1630689000012353
+    },
+    {
+      "query": "12345",
+      "latency_seconds": 2.1602399999974295
+    },
+    {
+      "query": "12345",
+      "latency_seconds": 2.1101105000125244
+    },
+    {
+      "query": "12345",
+      "latency_seconds": 2.27599100000225
+    }
+  ]
+}

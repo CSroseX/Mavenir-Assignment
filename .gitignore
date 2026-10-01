@@ -1,4 +1,4 @@
 /venv
 .env
-src\generation\__pycache__\
 **/__pycache__/
+Notes.txt

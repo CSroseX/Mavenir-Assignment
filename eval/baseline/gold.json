@@ -1,0 +1,138 @@
+[
+  {
+    "question_id": 1,
+    "question": "What is the role of the AMF in the 5G system architecture?",
+    "type": "normal",
+    "gold_pairs": [
+      {
+        "spec_id": "23.501",
+        "clause_id": "6.2.1"
+      }
+    ],
+    "justification": "TS 23.501 Clause 6.2.1 explicitly defines the core roles, functions, and termination interfaces of the AMF in 5GS."
+  },
+  {
+    "question_id": 2,
+    "question": "How does the UE initiate a PDU session establishment in 5GS?",
+    "type": "normal",
+    "gold_pairs": [
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.4.1.2"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "6.4.1.1"
+      }
+    ],
+    "justification": "TS 24.501 Clause 6.4.1.2 details the initiation steps and PDU SESSION ESTABLISHMENT REQUEST message sent by the UE."
+  },
+  {
+    "question_id": 3,
+    "question": "Which network function is responsible for selecting the SMF?",
+    "type": "normal",
+    "gold_pairs": [
+      {
+        "spec_id": "23.501",
+        "clause_id": "6.3.2"
+      }
+    ],
+    "justification": "TS 23.501 Clause 6.3.2 details the SMF selection function performed by the AMF."
+  },
+  {
+    "question_id": 4,
+    "question": "What is the structure of the 5G-GUTI?",
+    "type": "normal",
+    "gold_pairs": [
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.9.4"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "9.11.3.4"
+      }
+    ],
+    "justification": "TS 23.501 Clause 5.9.4 defines the architectural components of 5G-GUTI (GUAMI + 5G-TMSI), while TS 24.501 Clause 9.11.3.4 defines its exact IE coding."
+  },
+  {
+    "question_id": 5,
+    "question": "Describe the states of 5GMM (5GS Mobility Management) in the UE.",
+    "type": "normal",
+    "gold_pairs": [
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.1.3.2"
+      },
+      {
+        "spec_id": "24.501",
+        "clause_id": "5.1.3.1"
+      }
+    ],
+    "justification": "TS 24.501 Clause 5.1.3.2 explicitly enumerates and defines all 5GMM main states in the UE (NULL, DEREGISTERED, REGISTERED, etc.)."
+  },
+  {
+    "question_id": 6,
+    "question": "What is the purpose of the Network Slice Selection Assistance Information (NSSAI)?",
+    "type": "normal",
+    "gold_pairs": [
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.15.1"
+      },
+      {
+        "spec_id": "23.501",
+        "clause_id": "5.15.2"
+      }
+    ],
+    "justification": "TS 23.501 Clause 5.15.1 and 5.15.2 define the purpose of NSSAI (collection of S-NSSAIs) to assist the network in selecting a Network Slice Instance."
+  },
+  {
+    "question_id": 7,
+    "question": "When an MME receives an Attach Request, does it communicate with the UDM?",
+    "type": "adversarial",
+    "corpus_answerable": false,
+    "retrieval_scored": false,
+    "justification": "TS 24.301 Clause 5.5.1.2.2 details MME Attach handling and TS 23.501 Clause 6.2.7 defines UDM as a 5GS NF. Note: the 4G MME-HSS architectural interface (S6a) is specified in TS 23.401 which is outside the corpus, so full correction is not directly answerable from corpus alone."
+  },
+  {
+    "question_id": 8,
+    "question": "What timer does the AMF use for a Tracking Area Update in EPS?",
+    "type": "adversarial",
+    "corpus_answerable": true,
+    "retrieval_scored": false,
+    "justification": "TS 24.301 Clause 5.3.5 establishes timer T3412 for EPS TAU (MME), while TS 24.501 Clause 5.3.5 establishes timer T3512 for 5GS periodic registration (AMF)."
+  },
+  {
+    "question_id": 9,
+    "question": "During a 5G registration, how is the EPS bearer identity allocated?",
+    "type": "adversarial",
+    "corpus_answerable": true,
+    "retrieval_scored": false,
+    "justification": "TS 24.501 Clause 5.5.1.2.2 defines 5GS initial registration (using PDU Session ID and QFIs), whereas TS 24.301 Clause 6.4.1.2 defines EPS bearer identity allocation in 4G."
+  },
+  {
+    "question_id": 10,
+    "question": "Does the SGW connect to the SMF for user plane traffic?",
+    "type": "adversarial",
+    "corpus_answerable": true,
+    "retrieval_scored": false,
+    "justification": "TS 23.501 Clause 6.2.3 and 5.17.1.2 establish that 5G user plane traffic routes via UPF under SMF control over N4, not via SGW-SMF user plane."
+  },
+  {
+    "question_id": 11,
+    "question": "Explain how the PDN Gateway handles 5G QoS flows.",
+    "type": "adversarial",
+    "corpus_answerable": true,
+    "retrieval_scored": false,
+    "justification": "TS 23.501 Clause 5.7.1 and 5.7.2 define 5G QoS flows as UPF-managed entities, whereas PGW is a legacy EPS entity handling EPS bearers."
+  },
+  {
+    "question_id": 12,
+    "question": "What is the message format for a 5G Session Management Tracking Area Update?",
+    "type": "adversarial",
+    "corpus_answerable": true,
+    "retrieval_scored": false,
+    "justification": "TS 24.501 Clause 8.3 defines all 5GSM messages (showing no Tracking Area Update exists in 5GSM), while TS 24.301 Clause 8.2.26 defines TAU in EPS mobility management."
+  }
+]
