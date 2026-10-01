@@ -5,18 +5,31 @@ from typing import Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv()
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+load_dotenv(dotenv_path=os.path.join(project_root, '.env'))
 
 # Unified client for Ollama or Remote API
 USE_REMOTE_LLM = os.environ.get("USE_REMOTE_LLM", "false").lower() == "true"
 
+openrouter_key = os.environ.get("OPEN_ROUTER_API_KEY")
+openai_key = os.environ.get("OPENAI_API_KEY")
+preferred_base_url = os.environ.get("OPENAI_BASE_URL", "")
+
 if USE_REMOTE_LLM:
-    # Example for using a remote OpenAI-compatible API
+    if openrouter_key and (not openai_key or "openrouter.ai" in preferred_base_url.lower()):
+        api_key = openrouter_key
+        base_url = preferred_base_url or "https://openrouter.ai/api/v1"
+        default_model = "openai/gpt-oss-20b"
+    else:
+        api_key = openai_key or "dummy"
+        base_url = preferred_base_url or "https://api.openai.com/v1"
+        default_model = "gpt-3.5-turbo"
+
     client = OpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY", "dummy"),
-        base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        api_key=api_key,
+        base_url=base_url,
     )
-    MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+    MODEL_NAME = os.environ.get("MODEL_NAME", default_model)
 else:
     # Local Ollama endpoint
     client = OpenAI(
