@@ -85,12 +85,12 @@ Every phase must hold or reduce tokens per eval run. Rules:
 
 No LLM calls in this phase.
 
-- `src/config.py` — `pydantic-settings` singleton. Absorbs the literals currently
+- ✅ `src/config.py` — `pydantic-settings` singleton. Absorbs the literals currently
   duplicated across files: `"3gpp_specs"`, `localhost:6333`, `localhost:11434`,
   embed/reranker model names, `top_k` (today 5 in `app.py`/`run_eval.py`, 3 in
   `verify.py`, 20 in baseline), `fetch_k`, retry caps, thresholds, log level,
   eval sleep.
-- `src/obs/logging.py` — structlog; JSON to `logs/app.jsonl`, pretty console in
+- ✅ `src/obs/logging.py` — structlog; JSON to `logs/app.jsonl`, pretty console in
   dev. Replaces `print()` in `src/`, notably `nodes.py:79-81` (dumps the entire
   system prompt + all chunk text on *every* call) and `retriever.py:116-138`.
   **Update `CLAUDE.md` in the same commit** — it currently documents the verbose
@@ -98,27 +98,27 @@ No LLM calls in this phase.
 - `pyproject.toml` — replaces unpinned `requirements.txt`; pin from the current
   working env; extras `dev`/`eval`/`obs`; ruff + pytest config. Add the missing
   `docling` (used by `parse.py`, never declared).
-- `src/eval/metrics.py` — promote and **fix** the scorer from
+- ✅ `src/eval/metrics.py` — promote and **fix** the scorer from
   `run_baseline.py:43-47`: add **prefix-credit matching** so a retrieved
   descendant covers its gold ancestor. Report strict *and* prefix-credit side by
   side so the Phase 5 deltas are attributable to retrieval work, not the scorer
   fix. Add nDCG@10.
-- `eval/golden/golden_set.v1.json` — merge `eval/eval_set.json` (18 Qs, joined by
+- ✅ `eval/golden/golden_set.v1.json` — merge `eval/eval_set.json` (18 Qs, joined by
   question *text*) and `eval/baseline/gold.json` (12 entries, joined by
   `question_id`). One record per question, stable `id`, fields: `question`,
   `type`, `expected_behavior`, `gold_clauses`, `retrieval_scored`,
   `corpus_answerable`, `borderline`, `notes`. Mark Q15 (TCP/UDP) `borderline`
   — the eval set itself says "refusal *or* out of scope unless referenced as
   transport". Versioned filename; never edit a released version in place.
-- `tests/test_golden_set.py` — contract test asserting every `gold_clauses` entry
+- ✅ `tests/test_golden_set.py` — contract test asserting every `gold_clauses` entry
   resolves to ≥1 chunk (exact or descendant). **This test would have caught
   finding #3 on day one.** Plus `test_metrics.py`, `test_config.py`.
 - `app.py` — `@st.cache_resource` on `get_retriever()` / `get_graph()`. Today
   `app.py:75,82` reload two ML models and reparse 2,644 chunks **per message**.
-- `src/retrieval/retriever.py` — anchor the `data/chunks/*_chunks.json` glob
+- ✅ `src/retrieval/retriever.py` — anchor the `data/chunks/*_chunks.json` glob
   (`retriever.py:31`) to repo root; a bare relative glob silently returns zero
   from any other cwd.
-- `src/ingestion/indexer.py` — deterministic `chunk_id` (`sha1(spec|clause|ordinal)`)
+- ✅ `src/ingestion/indexer.py` — deterministic `chunk_id` (`sha1(spec|clause|ordinal)`)
   replacing per-run `uuid4()`. Snapshot-based CI in Phase 5 depends on this.
 - `.github/workflows/ci.yml` job 1: ruff + pytest, no network, under a minute.
 
@@ -130,13 +130,13 @@ second chat message is visibly faster; retrieval metrics re-run and committed as
 
 ## Phase 2 — Reliability and truthful state
 
-- `src/generation/state.py` — expand `GraphState`: `triage_decision`,
+- ✅ `src/generation/state.py` — expand `GraphState`: `triage_decision`,
   `retrieval_scores`, `sufficiency`, `rewrites`, `attempt`,
   `transport_attempts`, `termination_reason`, `citations`.
-- **Fix the off-by-one (finding #1):** `generate_node` owns the `attempt`
+- ✅ **Fix the off-by-one (finding #1):** `generate_node` owns the `attempt`
   counter; `verify_claims_node` becomes pure w.r.t. counters. First pass is
   `attempt == 1`; "self-corrected" means `attempt > 1 AND verification_passed`.
-- **Fix the swallowed exception (finding #2):** typed boundary, not bare
+- ✅ **Fix the swallowed exception (finding #2):** typed boundary, not bare
   `Exception`.
   - `APIStatusError` 429 / `APIConnectionError` / `APITimeoutError` → transport
     failure. Backoff via the SDK's `max_retries` (set explicitly in config). On
@@ -147,24 +147,24 @@ second chat message is visibly faster; retrieval metrics re-run and committed as
     retries and injects feedback.
   - Two counters: `grounding_retries` (semantic, drives routing) and
     `transport_attempts` (operational, observability only).
-- `src/generation/nodes/abstain.py` replaces `flag_unverified_node`, which today
+- ✅ `src/generation/nodes/abstain.py` replaces `flag_unverified_node`, which today
   passes a thrice-failed answer through unchanged and unbadged. Emits a
   structured abstention: what clauses *were* found, what couldn't be
   substantiated, and the `termination_reason` enum
   (`verified` | `verification_failed` | `insufficient_context` |
   `out_of_domain` | `verifier_unavailable`).
-- Banned-phrase leak check becomes a real gate (today `nodes.py:99-103` only
+- ✅ Banned-phrase leak check becomes a real gate (today `nodes.py:99-103` only
   prints). Tighten to word-boundary regexes — the current bare substrings
   `"retrieved"`/`"chunks"` false-positive on legitimate 3GPP prose about
   retrieving subscription data. One targeted rephrase, then abstain.
-- `src/generation/routers.py` — all conditional-edge functions, pure and
+- ✅ `src/generation/routers.py` — all conditional-edge functions, pure and
   unit-testable.
 - `app.py` — one `render_assistant_message()` switching on `termination_reason`,
   replacing the badge logic currently duplicated and already drifting between
   `app.py:48-59` and `app.py:100-107`. Renders **all** terminal states; today
   `"Flagged Unverified"` is computed and never shown. Drop the substring refusal
   heuristic at `app.py:151`.
-- `src/eval/runner.py` — rewrite of `eval/run_eval.py`. Resume keyed by `id` plus
+- ✅ `src/eval/runner.py` — rewrite of `eval/run_eval.py`. Resume keyed by `id` plus
   a content hash of the golden set (today: positional `start_index`, never
   validates `results[i].question == eval_set[i].question`). Replace
   `except: pass` (`run_eval.py:41-45`, silently restarts from zero then
