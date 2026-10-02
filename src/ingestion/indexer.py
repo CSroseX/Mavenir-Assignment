@@ -1,7 +1,7 @@
+import hashlib
 import json
 import glob
 import sys
-from uuid import uuid4
 
 # Check dependencies
 try:
@@ -65,9 +65,10 @@ def run_indexer():
         sys.exit(1)
 
     # 3. Load Chunks
-    chunk_files = glob.glob("data/chunks/*_chunks.json")
+    chunk_dir = cfg.project_root / "data" / "chunks"
+    chunk_files = sorted(glob.glob(str(chunk_dir / "*_chunks.json")))
     if not chunk_files:
-        print("No chunk files found in data/chunks/")
+        print(f"No chunk files found in {chunk_dir}")
         sys.exit(1)
 
     all_chunks = []
@@ -81,6 +82,24 @@ def run_indexer():
     # 4. Batch Embed and Index
     batch_size = cfg.indexer_batch_size
     points_indexed = 0
+
+    # Deterministic chunk_id: sha1(spec_id|clause_id|ordinal), where ordinal
+    # is the chunk's position among chunks sharing the same (spec_id,
+    # clause_id) — clause_id alone is not unique (e.g. frontmatter chunks
+    # all share clause_id "0"). Re-running the indexer over the same chunk
+    # files yields identical ids, which snapshot-based CI depends on.
+    clause_ordinals = {}
+    for chunk in all_chunks:
+        key = (chunk["spec_id"], chunk["clause_id"])
+        ordinal = clause_ordinals.get(key, 0)
+        clause_ordinals[key] = ordinal + 1
+        digest = hashlib.sha1(
+            f"{chunk['spec_id']}|{chunk['clause_id']}|{ordinal}".encode("utf-8")
+        ).hexdigest()
+        chunk["chunk_id"] = digest
+        # Qdrant point ids must be an unsigned int or a UUID string; derive a
+        # stable UUID from the same digest so the point id is reproducible.
+        chunk["_point_id"] = f"{digest[:8]}-{digest[8:12]}-{digest[12:16]}-{digest[16:20]}-{digest[20:32]}"
 
     for i in range(0, len(all_chunks), batch_size):
         batch = all_chunks[i:i + batch_size]
@@ -108,12 +127,12 @@ def run_indexer():
         # Build Qdrant points
         points = []
         for j, chunk in enumerate(batch):
-            point_id = str(uuid4())
+            point_id = chunk.pop("_point_id")
             points.append(
                 PointStruct(
                     id=point_id,
                     vector=vectors[j].tolist(), # Convert numpy array to python list for Qdrant
-                    payload=chunk # The entire chunk dict becomes the payload!
+                    payload=chunk # The entire chunk dict (incl. deterministic chunk_id) becomes the payload!
                 )
             )
 
