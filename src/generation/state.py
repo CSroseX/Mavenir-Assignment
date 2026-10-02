@@ -19,6 +19,7 @@ class GraphState(TypedDict, total=False):
     grounding_retries: int
     transport_attempts: int
     termination_reason: Optional[str]
+    abstention: Optional[Dict[str, Any]]  # set by abstain_node on any non-verified exit
 
     # Reserved for later phases (Phase 4 decision-nodes); unpopulated today.
     triage_decision: Optional[str]
