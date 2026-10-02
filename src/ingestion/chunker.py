@@ -2,20 +2,23 @@ import json
 import sys
 import os
 
+from src.config import get_settings
+
 def estimate_tokens(text):
     # Lightweight heuristic: ~4 characters per token
     return len(text) // 4
 
 def chunk_tree(input_json, output_json, spec_id="23.501", version="17.11.0"):
+    cfg = get_settings()
     print(f"Loading tree from {input_json}...")
     with open(input_json, 'r', encoding='utf-8') as f:
         clauses = json.load(f)
-        
+
     chunks = []
-    
+
     # Target and hard cap limits
-    SOFT_LIMIT = 400
-    HARD_CAP = 800
+    SOFT_LIMIT = cfg.chunk_soft_limit
+    HARD_CAP = cfg.chunk_hard_cap
     
     for clause in clauses:
         clause_id = clause.get('clause_id')

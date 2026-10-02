@@ -1,6 +1,7 @@
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, START, END
 from src.generation.nodes import generate_node, verify_claims_node
+from src.config import get_settings
 
 class GraphState(TypedDict):
     query: str
@@ -17,7 +18,7 @@ def should_retry(state: GraphState):
     if state["verification_passed"]:
         return END
         
-    if state["retries"] >= 3:
+    if state["retries"] >= get_settings().max_retries:
         # Exhausted retries. Route to unverified handler.
         return "flag_unverified"
         

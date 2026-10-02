@@ -6,6 +6,7 @@ import time
 # Ensure the root of the project is in the python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.config import get_settings
 from src.generation.graph import build_graph
 from src.retrieval.retriever import Retriever
 
@@ -54,7 +55,7 @@ def main():
         print(f"\n[{i+1}/{len(eval_set)}] Evaluating ({q_type}): {question}")
         
         # Retrieve chunks
-        chunks = retriever.search(question, top_k=5)
+        chunks = retriever.search(question, top_k=get_settings().default_top_k)
         
         inputs = {
             "query": question,
@@ -99,7 +100,7 @@ def main():
         # Rate limit protection: wait 5 seconds between questions
         if i < len(eval_set) - 1:
             print("Waiting 5 seconds to avoid rate limits...")
-            time.sleep(5)
+            time.sleep(get_settings().eval_sleep_seconds)
             
     # Compute aggregate metrics
     total = len(results)
