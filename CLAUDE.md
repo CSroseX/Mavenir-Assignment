@@ -69,7 +69,7 @@ Four stages, each writing a cached artifact the next stage reads. No orchestrato
 ## Conventions
 
 - Entry-point scripts append the project root to `sys.path` before importing `src.*`; keep that in any new script.
-- Pipeline scripts print verbose `[DEBUG]` blocks (full LLM payloads, candidate lists before/after reranking) to stdout. This is intentional — it is the primary debugging surface.
+- `src/obs/logging.py` provides `get_logger()` (structlog): JSON lines to `logs/app.jsonl`, pretty console in dev. `nodes.py` and `retriever.py` use it instead of `print()` for payload dumps, candidate lists, and warnings/errors. CLI entry points (`retriever.py`'s `__main__` block, missing-dependency messages) still use plain `print()` since that output is the point of running the script, not debug noise.
 - `spec_id` is bare and dotted (`23.501`, no `TS`); `version` is a separate field (`17.11.0`). Both are passed as chunker CLI args, so a wrong invocation mislabels every chunk from that spec.
 - Several files wrap `sys.stdout` in a UTF-8 `TextIOWrapper` — Windows console default encoding breaks on spec text.
 

@@ -6,8 +6,10 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 from src.config import get_settings
+from src.obs.logging import get_logger
 
 cfg = get_settings()
+log = get_logger(__name__)
 
 load_dotenv(dotenv_path=str(cfg.project_root / ".env"))
 
@@ -82,9 +84,7 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
         {"role": "user", "content": user_prompt}
     ]
 
-    print("\n[DEBUG] === Exact Payload Sent to LLM (Generate Node) ===")
-    print(json.dumps(messages_payload, indent=2))
-    print("=========================================================\n")
+    log.debug("generate_node.payload", messages=messages_payload)
 
     response = client.chat.completions.create(
         model=MODEL_NAME,
@@ -104,7 +104,7 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     lower_ans = answer.lower()
     for phrase in banned_phrases:
         if phrase in lower_ans:
-            print(f"\n[WARNING] Leaking retrieval language detected: '{phrase}'\n")
+            log.warning("generate_node.banned_phrase_leak", phrase=phrase)
 
     return {"answer": answer}
 
@@ -166,7 +166,7 @@ Provide your output in the following JSON format ONLY:
         if not is_supported and unsupported:
             feedback = "The following claims were NOT supported by the source text and must be removed or corrected:\n- " + "\n- ".join(unsupported)
     except Exception as e:
-        print(f"Verification JSON parsing/API error: {e}")
+        log.error("verify_claims_node.parse_or_api_error", error=str(e))
         is_supported = False
         feedback = "verification could not complete."
 

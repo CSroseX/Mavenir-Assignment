@@ -13,6 +13,9 @@ except ImportError:
     sys.exit(1)
 
 from src.config import get_settings
+from src.obs.logging import get_logger
+
+log = get_logger(__name__)
 
 class Retriever:
     def __init__(self, collection_name=None, qdrant_url=None):
@@ -20,9 +23,9 @@ class Retriever:
         self.collection_name = collection_name or cfg.qdrant_collection
         self.q_client = QdrantClient(url=qdrant_url or cfg.qdrant_url, check_compatibility=False)
         self.model = TextEmbedding(model_name=cfg.embedding_model)
-        print("Loading CrossEncoder...")
+        log.info("retriever.loading_cross_encoder")
         self.cross_encoder = CrossEncoder(cfg.reranker_model)
-        print("CrossEncoder loaded.")
+        log.info("retriever.cross_encoder_loaded")
 
         # Regex patterns for query routing
         self.spec_pattern = re.compile(r"(?i)(?:TS\s*)?\b(\d{2}\.\d{3})\b")
@@ -65,15 +68,14 @@ class Retriever:
         is_targeted = bool(spec_id or clause_id)
         path_name = "TARGETED PATH" if is_targeted else "DEFAULT PATH"
 
-        print(f"\n--- {path_name} Execution ---")
-        print(f"Query: '{query}'")
+        log.debug("retriever.search.path", path=path_name, query=query)
 
         # Build Filter if Targeted
         query_filter = None
         if is_targeted:
             conditions = []
             if spec_id:
-                print(f"Detected targeting -> Spec: {spec_id}")
+                log.debug("retriever.search.spec_targeting", spec_id=spec_id)
                 conditions.append(
                     FieldCondition(key="spec_id", match=MatchValue(value=spec_id))
                 )
@@ -86,13 +88,17 @@ class Retriever:
                     # Fallback to just the raw string if not found
                     matched_clauses = [clause_id]
 
-                print(f"Detected targeting -> Clause: {clause_id} (Expanded to {len(matched_clauses)} child clauses)")
+                log.debug(
+                    "retriever.search.clause_targeting",
+                    clause_id=clause_id,
+                    expanded_count=len(matched_clauses),
+                )
                 conditions.append(
                     FieldCondition(key="clause_id", match=MatchAny(any=matched_clauses))
                 )
             query_filter = Filter(must=conditions)
         else:
-            print("No targeting detected. Running full cross-spec semantic search.")
+            log.debug("retriever.search.no_targeting")
 
         # Generate embedding
         vector = list(self.model.embed([query]))[0].tolist()
@@ -120,13 +126,17 @@ class Retriever:
         if not candidates:
             return []
 
-        print(f"\n[DEBUG] --- Candidates retrieved before reranking (Top {len(candidates)}) ---")
-        for i, c in enumerate(candidates):
-            print(f"[{i+1}] Spec {c['spec_id']} Clause {c['clause_id']} | Qdrant Score: {c['qdrant_score']}")
-        print("------------------------------------------------------------\n")
+        log.debug(
+            "retriever.search.candidates_before_rerank",
+            count=len(candidates),
+            candidates=[
+                {"spec_id": c["spec_id"], "clause_id": c["clause_id"], "qdrant_score": c["qdrant_score"]}
+                for c in candidates
+            ],
+        )
 
         # Rerank with Cross-Encoder
-        print(f"Reranking {len(candidates)} candidates...")
+        log.debug("retriever.search.reranking", count=len(candidates))
         pairs = [(str(query), str(c["content"])) for c in candidates]
         cross_scores = self.cross_encoder.predict(pairs)
 
@@ -139,10 +149,14 @@ class Retriever:
         # Take top_k
         formatted_results = candidates[:top_k]
 
-        print(f"\n[DEBUG] --- Final Top {top_k} Candidates after reranking ---")
-        for i, c in enumerate(formatted_results):
-            print(f"[{i+1}] Spec {c['spec_id']} Clause {c['clause_id']} | Cross-Encoder Score: {c['score']}")
-        print("----------------------------------------------------------\n")
+        log.debug(
+            "retriever.search.final_results",
+            top_k=top_k,
+            results=[
+                {"spec_id": c["spec_id"], "clause_id": c["clause_id"], "score": c["score"]}
+                for c in formatted_results
+            ],
+        )
 
         return formatted_results
 
