@@ -1,34 +1,18 @@
-from typing import TypedDict, List, Dict, Any
+from typing import Dict, Any
 from langgraph.graph import StateGraph, START, END
 from src.generation.nodes import generate_node, verify_claims_node
-from src.config import get_settings
-
-class GraphState(TypedDict):
-    query: str
-    chunks: List[Dict[str, Any]]
-    answer: str
-    verification_passed: bool
-    feedback: str
-    retries: int
-
-def should_retry(state: GraphState):
-    """
-    Conditional edge router.
-    """
-    if state["verification_passed"]:
-        return END
-        
-    if state["retries"] >= get_settings().max_retries:
-        # Exhausted retries. Route to unverified handler.
-        return "flag_unverified"
-        
-    return "generate"
+from src.generation.routers import should_retry
+from src.generation.state import GraphState
 
 def flag_unverified_node(state: GraphState) -> Dict[str, Any]:
     """
     Passes through the answer if verification failed after max retries, without appending a visible warning.
+    Sets termination_reason unless the verifier itself was the reason we got here.
     """
-    return {"answer": state["answer"]}
+    result = {"answer": state["answer"]}
+    if state.get("termination_reason") != "verifier_unavailable":
+        result["termination_reason"] = "verification_failed"
+    return result
 
 def build_graph():
     workflow = StateGraph(GraphState)

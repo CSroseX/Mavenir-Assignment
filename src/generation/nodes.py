@@ -2,7 +2,7 @@ import json
 import os
 import re
 from typing import Dict, Any
-from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from dotenv import load_dotenv
 
 from src.config import get_settings
@@ -46,16 +46,30 @@ else:
     )
     MODEL_NAME = cfg.local_llm_model
 
-def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generates a natural prose answer based on the query and retrieved chunks.
-    Does NOT format claims or citations.
-    """
-    query = state["query"]
-    chunks = state["chunks"]
-    feedback = state.get("feedback", "")
+# Word-boundary regexes: bare substring matching on "retrieved"/"chunks"
+# false-positives on legitimate 3GPP prose (e.g. "the UE retrieved the
+# subscription data"). These patterns only catch the system talking about
+# its own retrieval mechanism, not the domain's own use of these words.
+BANNED_PHRASE_PATTERNS = [
+    re.compile(r"\bprovided source\b", re.IGNORECASE),
+    re.compile(r"\bprovided chunks?\b", re.IGNORECASE),
+    re.compile(r"\bprovided text\b", re.IGNORECASE),
+    re.compile(r"\bprovided specifications?\b", re.IGNORECASE),
+    re.compile(r"\bsource chunks?\b", re.IGNORECASE),
+    re.compile(r"\bretrieved (?:information|context|text|chunks?|documents?)\b", re.IGNORECASE),
+    re.compile(r"\bthe chunks?\b", re.IGNORECASE),
+]
 
-    # Format chunks for context
+
+def _detect_banned_phrase(answer: str) -> str | None:
+    for pattern in BANNED_PHRASE_PATTERNS:
+        match = pattern.search(answer)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _build_generate_messages(query: str, chunks, feedback: str, leak_rephrase: bool = False):
     chunk_text = "\n\n".join([f"--- CHUNK {c['clause_id']} (Spec {c['spec_id']}) ---\n{c['content']}" for c in chunks])
 
     system_prompt = (
@@ -79,12 +93,36 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if feedback:
         user_prompt += f"\n\n<FEEDBACK FROM PREVIOUS ATTEMPT>\n{feedback}\nPlease revise your answer to ensure all claims are strictly supported by the sources.\n</FEEDBACK FROM PREVIOUS ATTEMPT>"
 
-    messages_payload = [
+    if leak_rephrase:
+        user_prompt += (
+            "\n\n<REPHRASE REQUIRED>\nYour previous answer referred to how this information was obtained "
+            "(e.g. mentioning \"chunks\" or \"retrieved\" text). Rephrase the same factual content as confident "
+            "expert knowledge, without any reference to sources, retrieval, or documents.\n</REPHRASE REQUIRED>"
+        )
+
+    return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
 
-    log.debug("generate_node.payload", messages=messages_payload)
+
+def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Generates a natural prose answer based on the query and retrieved chunks.
+    Does NOT format claims or citations.
+
+    Owns the `attempt` counter: this node increments it, not the verifier,
+    so a first-pass success records attempt == 1 (previously the verifier
+    incremented `retries` on every call including the first, so a first-pass
+    success recorded retries == 1).
+    """
+    query = state["query"]
+    chunks = state["chunks"]
+    feedback = state.get("feedback", "")
+    attempt = state.get("attempt", 0) + 1
+
+    messages_payload = _build_generate_messages(query, chunks, feedback)
+    log.debug("generate_node.payload", messages=messages_payload, attempt=attempt)
 
     response = client.chat.completions.create(
         model=MODEL_NAME,
@@ -96,30 +134,31 @@ def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # Safety net: strip out any <think> blocks that might leak through
     answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
 
-    # Backstop filter to detect if retrieval language leaked
-    banned_phrases = [
-        "provided source", "provided chunk", "provided text",
-        "provided specification", "source chunk", "retrieved", "chunks"
-    ]
-    lower_ans = answer.lower()
-    for phrase in banned_phrases:
-        if phrase in lower_ans:
-            log.warning("generate_node.banned_phrase_leak", phrase=phrase)
+    # Banned-phrase gate: a real gate, not just a log line. One targeted
+    # rephrase, then let the leak stand (the caller/verifier path handles
+    # it from there — this node does not loop on itself).
+    leaked_phrase = _detect_banned_phrase(answer)
+    if leaked_phrase:
+        log.warning("generate_node.banned_phrase_leak", phrase=leaked_phrase, attempt=attempt)
+        rephrase_messages = _build_generate_messages(query, chunks, feedback, leak_rephrase=True)
+        rephrase_response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=rephrase_messages,
+            temperature=cfg.generate_temperature
+        )
+        rephrased = re.sub(
+            r'<think>.*?</think>', '', rephrase_response.choices[0].message.content, flags=re.DOTALL
+        ).strip()
+        if not _detect_banned_phrase(rephrased):
+            answer = rephrased
+        else:
+            log.warning("generate_node.banned_phrase_leak_persisted", attempt=attempt)
 
-    return {"answer": answer}
+    return {"answer": answer, "attempt": attempt, "retries": max(attempt - 1, 0)}
 
-def verify_claims_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Acts as a strict judge to ensure every claim in the answer is supported by the chunks.
-    Returns JSON containing boolean support and unsupported claims.
-    """
-    answer = state["answer"]
-    chunks = state["chunks"]
-    retries = state.get("retries", 0)
-
+def _build_verify_prompt(answer: str, chunks) -> str:
     chunk_text = "\n\n".join([f"--- CHUNK {c['clause_id']} (Spec {c['spec_id']}) ---\n{c['content']}" for c in chunks])
-
-    prompt = f"""You are a strict, impartial fact-checker. You will be provided with an ANSWER generated by an AI assistant, and a set of SOURCE CHUNKS retrieved from 3GPP telecom specifications.
+    return f"""You are a strict, impartial fact-checker. You will be provided with an ANSWER generated by an AI assistant, and a set of SOURCE CHUNKS retrieved from 3GPP telecom specifications.
 
 Verify if every factual claim in the ANSWER is strictly supported by the SOURCE CHUNKS.
 Do NOT use outside knowledge. Strict entailment is required. If a claim is not supported, you must fail the verification.
@@ -146,32 +185,87 @@ Provide your output in the following JSON format ONLY:
   ]
 }}"""
 
+
+def _call_verifier(prompt: str):
+    """One raw call to the verifier LLM. Raises on transport/API failure;
+    raises json.JSONDecodeError on malformed JSON. Caller interprets both."""
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=cfg.verify_temperature,
+        max_tokens=cfg.verify_max_tokens
+    )
+    raw_json = response.choices[0].message.content
+    return json.loads(raw_json)
+
+
+def verify_claims_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Acts as a strict judge to ensure every claim in the answer is supported by the chunks.
+
+    Typed exception boundary, pure with respect to the grounding-retry
+    counter: only a valid JSON response with is_supported: false represents
+    a genuine grounding failure and increments grounding_retries. A
+    transport failure (rate limit, connection, timeout) or malformed JSON
+    is an operational hiccup, not evidence the answer is wrong — it must
+    not be indistinguishable from one in the returned state.
+    """
+    answer = state["answer"]
+    chunks = state["chunks"]
+    grounding_retries = state.get("grounding_retries", 0)
+    transport_attempts = state.get("transport_attempts", 0)
+
+    prompt = _build_verify_prompt(answer, chunks)
+
+    verification = None
+    transport_failure = False
+
     try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"},
-            temperature=cfg.verify_temperature,
-            max_tokens=cfg.verify_max_tokens
-        )
-        raw_json = response.choices[0].message.content
-        verification = json.loads(raw_json)
+        verification = _call_verifier(prompt)
+    except json.JSONDecodeError as e:
+        # Malformed JSON: one reask, then treat as transport.
+        log.warning("verify_claims_node.malformed_json_reask", error=str(e))
+        transport_attempts += 1
+        try:
+            verification = _call_verifier(prompt)
+        except json.JSONDecodeError as e2:
+            log.error("verify_claims_node.malformed_json_after_reask", error=str(e2))
+            transport_failure = True
+            transport_attempts += 1
+        except (APIStatusError, APIConnectionError, APITimeoutError) as e2:
+            log.error("verify_claims_node.transport_error_after_reask", error=str(e2))
+            transport_failure = True
+            transport_attempts += 1
+    except (APIStatusError, APIConnectionError, APITimeoutError) as e:
+        log.error("verify_claims_node.transport_error", error=str(e))
+        transport_failure = True
+        transport_attempts += 1
 
-        is_supported = verification.get("is_supported", False)
-        unsupported = verification.get("unsupported_claims", [])
+    if transport_failure:
+        return {
+            "verification_passed": False,
+            "feedback": "",
+            "retries": grounding_retries,  # legacy field: app.py / eval scripts
+            "grounding_retries": grounding_retries,
+            "transport_attempts": transport_attempts,
+            "termination_reason": "verifier_unavailable",
+        }
 
-        feedback = ""
-        if not is_supported and unsupported:
-            feedback = "The following claims were NOT supported by the source text and must be removed or corrected:\n- " + "\n- ".join(unsupported)
-    except Exception as e:
-        log.error("verify_claims_node.parse_or_api_error", error=str(e))
-        is_supported = False
-        feedback = "verification could not complete."
+    is_supported = verification.get("is_supported", False)
+    unsupported = verification.get("unsupported_claims", [])
+
+    feedback = ""
+    if not is_supported and unsupported:
+        feedback = "The following claims were NOT supported by the source text and must be removed or corrected:\n- " + "\n- ".join(unsupported)
+
+    new_grounding_retries = grounding_retries + (0 if is_supported else 1)
 
     return {
         "verification_passed": is_supported,
         "feedback": feedback,
-        "retries": retries + 1
+        "retries": new_grounding_retries,  # legacy field: app.py / eval scripts
+        "grounding_retries": new_grounding_retries,
+        "transport_attempts": transport_attempts,
+        "termination_reason": "verified" if is_supported else None,
     }
