@@ -1,12 +1,12 @@
+import glob
+import json
 import re
 import sys
-import json
-import glob
 
 try:
     from fastembed import TextEmbedding
     from qdrant_client import QdrantClient
-    from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
+    from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
     from sentence_transformers import CrossEncoder
 except ImportError:
     print("Missing dependencies. Please run: pip install qdrant-client fastembed sentence-transformers")

@@ -1,15 +1,14 @@
 import json
 import os
-import re
 import sys
 import time
 from statistics import mean
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from src.generation import nodes as gen_nodes
 from src.generation.graph import build_graph
 from src.retrieval.retriever import Retriever
-from src.generation import nodes as gen_nodes
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(BASE))

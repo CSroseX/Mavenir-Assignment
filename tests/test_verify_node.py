@@ -3,7 +3,6 @@ import types
 
 import httpx
 import openai
-import pytest
 
 from src.generation import nodes as gen_nodes
 

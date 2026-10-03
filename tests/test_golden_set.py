@@ -4,7 +4,6 @@ import os
 
 from src.eval.metrics import is_prefix_match
 
-
 GOLDEN_SET_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "eval", "golden", "golden_set.v1.json"
 )

@@ -15,6 +15,7 @@ spec.loader.exec_module(rb)
 # After one failed verify, the graph stops instead of retrying generation.
 import src.generation.graph as graph_mod
 
+
 def one_pass_should_retry(state):
     if state.get('verification_passed'):
         return graph_mod.END

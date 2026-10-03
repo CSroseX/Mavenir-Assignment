@@ -1,8 +1,9 @@
 import json
-import sys
 import os
+import sys
 
 from src.config import get_settings
+
 
 def estimate_tokens(text):
     # Lightweight heuristic: ~4 characters per token
@@ -19,20 +20,20 @@ def chunk_tree(input_json, output_json, spec_id="23.501", version="17.11.0"):
     # Target and hard cap limits
     SOFT_LIMIT = cfg.chunk_soft_limit
     HARD_CAP = cfg.chunk_hard_cap
-    
+
     for clause in clauses:
         clause_id = clause.get('clause_id')
         clause_title = clause.get('clause_title')
         lineage = clause.get('lineage', [])
-        
+
         current_text_buffer = []
         current_token_count = 0
-        
+
         def flush_text_chunk():
             nonlocal current_text_buffer, current_token_count
             if not current_text_buffer:
                 return
-                
+
             merged_text = "\n\n".join(current_text_buffer)
             chunks.append({
                 "spec_id": spec_id,
@@ -50,7 +51,7 @@ def chunk_tree(input_json, output_json, spec_id="23.501", version="17.11.0"):
             if item.get('type') == 'table':
                 # If a table is encountered, flush any accumulated text first to maintain reading order
                 flush_text_chunk()
-                
+
                 # Tables are NEVER split or flattened. They are saved entirely intact.
                 chunks.append({
                     "spec_id": spec_id,
@@ -61,32 +62,32 @@ def chunk_tree(input_json, output_json, spec_id="23.501", version="17.11.0"):
                     "chunk_type": "table",
                     "content": item.get('grid', [])
                 })
-                
+
             elif item.get('type') == 'text':
                 text = item.get('text', '').strip()
                 if not text:
                     continue
-                    
+
                 item_tokens = estimate_tokens(text)
-                
+
                 # If adding this item exceeds the soft limit (and text buffer is non-empty), flush first
                 if current_text_buffer and (current_token_count + item_tokens) > SOFT_LIMIT:
                     flush_text_chunk()
-                    
+
                 current_text_buffer.append(text)
                 current_token_count += item_tokens
-                
+
                 # If a single paragraph exceeds the hard cap on its own, flush immediately
                 if current_token_count > HARD_CAP:
                     flush_text_chunk()
-                    
+
         # Flush any remaining text at the end of the clause
         flush_text_chunk()
-        
+
     os.makedirs(os.path.dirname(output_json), exist_ok=True)
     with open(output_json, 'w', encoding='utf-8') as f:
         json.dump(chunks, f, indent=2)
-        
+
     print(f"Successfully generated {len(chunks)} chunks.")
     print(f"Saved to {output_json}")
 
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: python chunker.py <input_tree_json> <output_chunks_json> [spec_id] [version]")
         sys.exit(1)
-        
+
     spec = sys.argv[3] if len(sys.argv) > 3 else "23.501"
     ver = sys.argv[4] if len(sys.argv) > 4 else "17.11.0"
     chunk_tree(sys.argv[1], sys.argv[2], spec, ver)

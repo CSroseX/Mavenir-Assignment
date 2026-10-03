@@ -1,18 +1,19 @@
+import glob
 import hashlib
 import json
-import glob
 import sys
 
 # Check dependencies
 try:
     from fastembed import TextEmbedding
     from qdrant_client import QdrantClient
-    from qdrant_client.models import Distance, VectorParams, PointStruct
+    from qdrant_client.models import Distance, PointStruct, VectorParams
 except ImportError:
     print("Missing dependencies. Please run: pip install qdrant-client fastembed")
     sys.exit(1)
 
 from src.config import get_settings
+
 
 def format_table_for_embedding(grid):
     # Convert a 2D grid to a markdown-like string for the embedding model

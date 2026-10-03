@@ -1,9 +1,10 @@
+import glob
+import io
+import json
 import os
 import sys
 import time
-import json
-import glob
-import io
+
 from dotenv import load_dotenv
 
 # Ensure stdout handles UTF-8
@@ -64,7 +65,7 @@ try:
         client = OpenAI(api_key=openai_key, base_url=openai_url)
     else:
         client = OpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
-        
+
     t0 = time.time()
     response = client.chat.completions.create(
         model=model_name if model_name else "gpt-3.5-turbo",

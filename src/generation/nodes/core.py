@@ -1,9 +1,10 @@
 import json
 import os
 import re
-from typing import Dict, Any
-from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
+from typing import Any, Dict
+
 from dotenv import load_dotenv
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 
 from src.config import get_settings
 from src.obs.logging import get_logger
