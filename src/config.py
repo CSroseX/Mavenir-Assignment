@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     # ── Eval ────────────────────────────────────────────────────────
     eval_sleep_seconds: int = 5
 
+    # ── Cost estimation (USD per 1k tokens, clearly an ESTIMATE) ───
+    cost_per_1k_input_tokens: float = 0.0015
+    cost_per_1k_output_tokens: float = 0.002
+
     # ── LLM selection (from .env) ───────────────────────────────────
     use_remote_llm: bool = False
     open_router_api_key: str = ""
