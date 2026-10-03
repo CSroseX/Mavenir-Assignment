@@ -1,0 +1,48 @@
+[project]
+name = "mavenir-3gpp-rag"
+version = "0.1.0"
+description = "RAG system answering 3GPP telecom questions grounded in TS 23.501 / 24.501 / 24.301"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit==1.61.1",
+    "qdrant-client==1.19.0",
+    "fastembed==0.8.0",
+    "sentence-transformers==5.7.0",
+    "langgraph==1.2.11",
+    "openai==3.1.0",
+    "python-dotenv==1.2.2",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.15.0",
+    "structlog==26.1.0",
+]
+
+[project.optional-dependencies]
+# Ingestion-only: parse.py re-parses PDFs via Docling. Not needed for
+# retrieval/generation/eval, so kept out of the base dependency set.
+ingest = [
+    "docling==2.120.1",
+]
+dev = [
+    "pytest==9.1.1",
+    "ruff>=0.8",
+]
+eval = [
+    "rank-bm25",
+]
+obs = [
+    "langfuse",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+# eval/baseline/ is frozen (the "before" measurement for the ablation table);
+# eval/run_eval.py is kept as-is, superseded by src/eval/runner.py.
+extend-exclude = ["eval/baseline", "eval/run_eval.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]  # long lines pre-exist in src/ingestion/*; not worth reflowing unrelated code
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

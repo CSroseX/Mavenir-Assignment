@@ -1,7 +1,9 @@
-from langgraph.graph import StateGraph, START, END
-from src.generation.nodes import generate_node, verify_claims_node, abstain_node
+from langgraph.graph import END, START, StateGraph
+
+from src.generation.nodes import abstain_node, generate_node, verify_claims_node
 from src.generation.routers import should_retry
 from src.generation.state import GraphState
+
 
 def build_graph():
     workflow = StateGraph(GraphState)
