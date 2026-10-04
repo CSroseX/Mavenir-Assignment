@@ -35,11 +35,21 @@ class Retriever:
         self.valid_clause_ids = set()
         chunk_dir = cfg.project_root / "data" / "chunks"
         chunk_files = glob.glob(str(chunk_dir / "*_chunks.json"))
+        if not chunk_files:
+            raise FileNotFoundError(
+                f"No chunk files found in {chunk_dir}. "
+                "Run the ingestion pipeline first (see CLAUDE.md)."
+            )
         for f in chunk_files:
             with open(f, "r", encoding="utf-8") as file:
                 chunks = json.load(file)
                 for c in chunks:
                     self.valid_clause_ids.add(c["clause_id"])
+        if not self.valid_clause_ids:
+            raise ValueError(
+                f"Chunk files in {chunk_dir} contained no clause IDs. "
+                "The files may be empty or malformed."
+            )
 
     def _parse_query(self, query: str):
         """
