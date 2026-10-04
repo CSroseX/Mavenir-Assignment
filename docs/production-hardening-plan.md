@@ -95,9 +95,10 @@ No LLM calls in this phase.
   system prompt + all chunk text on *every* call) and `retriever.py:116-138`.
   **Update `CLAUDE.md` in the same commit** — it currently documents the verbose
   `[DEBUG]` prints as intentional.
-- `pyproject.toml` — replaces unpinned `requirements.txt`; pin from the current
-  working env; extras `dev`/`eval`/`obs`; ruff + pytest config. Add the missing
-  `docling` (used by `parse.py`, never declared).
+- ✅ `pyproject.toml` — replaces unpinned `requirements.txt`; pin from the current
+  working env; extras `dev`/`eval`/`obs`/`ingest`; ruff + pytest config. Add the
+  missing `docling` (used by `parse.py`, never declared), as the `ingest` extra
+  since it's only needed to re-parse PDFs.
 - ✅ `src/eval/metrics.py` — promote and **fix** the scorer from
   `run_baseline.py:43-47`: add **prefix-credit matching** so a retrieved
   descendant covers its gold ancestor. Report strict *and* prefix-credit side by
@@ -113,18 +114,25 @@ No LLM calls in this phase.
 - ✅ `tests/test_golden_set.py` — contract test asserting every `gold_clauses` entry
   resolves to ≥1 chunk (exact or descendant). **This test would have caught
   finding #3 on day one.** Plus `test_metrics.py`, `test_config.py`.
-- `app.py` — `@st.cache_resource` on `get_retriever()` / `get_graph()`. Today
-  `app.py:75,82` reload two ML models and reparse 2,644 chunks **per message**.
+- ✅ `app.py` — `@st.cache_resource` on `get_retriever()` / `get_graph()`,
+  replacing the per-message reload of two ML models and 2,644 chunks.
 - ✅ `src/retrieval/retriever.py` — anchor the `data/chunks/*_chunks.json` glob
   (`retriever.py:31`) to repo root; a bare relative glob silently returns zero
   from any other cwd.
 - ✅ `src/ingestion/indexer.py` — deterministic `chunk_id` (`sha1(spec|clause|ordinal)`)
   replacing per-run `uuid4()`. Snapshot-based CI in Phase 5 depends on this.
-- `.github/workflows/ci.yml` job 1: ruff + pytest, no network, under a minute.
+- ✅ `.github/workflows/ci.yml` job 1: ruff + pytest, no network, under a minute.
 
 **Verify:** `pytest` green; contract test fails on a deliberately bad gold pair;
 second chat message is visibly faster; retrieval metrics re-run and committed as
 `eval/baselines/retrieval_baseline.json` with both scorer variants.
+
+**Status: done.** All ten sub-issues (#2–#11) landed. The retrieval baseline
+was regenerated via the new `src/eval/retrieval_report.py` (zero LLM tokens,
+calls `Retriever.search()` against live Qdrant) and committed to
+`eval/baselines/retrieval_baseline.json`; numbers match what's recorded above
+(recall@5 ≈ 0.583 strict / 0.667 prefix-credit, recall@20 ≈ 0.75 / 0.917,
+MRR ≈ 0.468 / 0.523), confirming no drift since this plan was written.
 
 ---
 
@@ -159,11 +167,16 @@ second chat message is visibly faster; retrieval metrics re-run and committed as
   retrieving subscription data. One targeted rephrase, then abstain.
 - ✅ `src/generation/routers.py` — all conditional-edge functions, pure and
   unit-testable.
-- `app.py` — one `render_assistant_message()` switching on `termination_reason`,
-  replacing the badge logic currently duplicated and already drifting between
-  `app.py:48-59` and `app.py:100-107`. Renders **all** terminal states; today
-  `"Flagged Unverified"` is computed and never shown. Drop the substring refusal
-  heuristic at `app.py:151`.
+- ✅ `app.py` — one `render_assistant_message()` switching on `termination_reason`,
+  replacing the badge logic that used to be duplicated between the chat-history
+  replay loop and the live-response block. Renders **all** terminal states
+  (`verified`, `verification_failed`, `insufficient_context`, `out_of_domain`,
+  `verifier_unavailable`), not just the two success cases, and shows
+  `unsupported_claims` in an expander when present. The substring refusal
+  heuristic (`"cannot"`/`"sorry"` in the answer text) still exists, but only in
+  the Eval Dashboard tab's refusal-accuracy metric, which reads `run_eval.py`'s
+  on-disk result format — untouched because that format wasn't part of #19's
+  scope.
 - ✅ `src/eval/runner.py` — rewrite of `eval/run_eval.py`. Resume keyed by `id` plus
   a content hash of the golden set (today: positional `start_index`, never
   validates `results[i].question == eval_set[i].question`). Replace
@@ -171,7 +184,9 @@ second chat message is visibly faster; retrieval metrics re-run and committed as
   overwrites the good file) with `JSONDecodeError`-specific handling and
   **atomic temp-file-then-replace** writes. Add `--limit` / `--types` for cheap
   iteration.
-- Delete the stale `eval/results.json`; one clean full 18-question run.
+- [ ] Delete the stale `eval/results.json`; one clean full 18-question run.
+  **Still open** — needs Qdrant live and spends real LLM tokens on the free-tier
+  key, so it waits for explicit go-ahead rather than running automatically.
 
 **Verify:** router unit tests over the state cross-product; fault-injection test
 patching the client to raise `APIStatusError` 429 asserts
@@ -180,9 +195,23 @@ feedback; a first-pass success records `attempt == 1`; full run yields 18 rows
 and reaches all 6 `out_of_scope` questions. Expect the honest pass rate to be
 *bad* — that is the Phase 4 setup.
 
+**Status: code-complete, one run pending.** All eight code changes above are
+in; the only remaining step is actually running the clean 18-question eval
+and deleting the stale results file, both withheld pending go-ahead on token
+spend (the active key is a free-tier OpenRouter key, and the configured model,
+`openai/gpt-oss-20b`, is a reasoning model that burns tokens on internal
+reasoning before producing visible output — worth factoring into the token
+budget before that run).
+
 ---
 
 ## Phase 3 — Observability
+
+**Note:** `src/obs/metrics.py`'s `RunRecorder` (see below) has already landed
+and is unit-tested (`tests/test_run_recorder.py`), ahead of the rest of this
+phase. It is not yet called from anywhere — `src/eval/runner.py` still writes
+its own result format directly. Wiring `RunRecorder` into the runner (and
+later into the graph nodes) is the remaining work for that bullet.
 
 - `docker-compose.yml` — Qdrant + Langfuse (+ Postgres/ClickHouse).
 - `src/obs/tracing.py` — swap `from openai import OpenAI` for
@@ -196,7 +225,7 @@ and reaches all 6 `out_of_scope` questions. Expect the honest pass rate to be
 - **Non-fatal and optional.** With `LANGFUSE_HOST` unset the factory returns the
   plain client and `@observe` no-ops. A portfolio project that crashes without a
   tracing backend is worse than one with no tracing.
-- `src/obs/metrics.py` — `RunRecorder` writes self-contained
+- ✅ (built, not wired in) `src/obs/metrics.py` — `RunRecorder` writes self-contained
   `eval/runs/<run_id>/{run.json, per_question.jsonl, summary.json}`. Langfuse is
   for interactive inspection; it must **not** be a dependency of the eval gate.
   Records per-node latency, tokens in/out per call, estimated cost (price table
