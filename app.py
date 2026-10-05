@@ -8,7 +8,6 @@ import streamlit as st
 # Ensure the root of the project is in the python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.config import get_settings
 from src.generation.graph import build_graph
 from src.retrieval.retriever import Retriever
 
@@ -19,8 +18,8 @@ def get_retriever():
     return Retriever()
 
 @st.cache_resource
-def get_graph():
-    return build_graph()
+def get_graph(_retriever):
+    return build_graph(retriever=_retriever)
 
 def load_eval_results():
     results_path = os.path.join(os.path.dirname(__file__), "eval", "results.json")
@@ -108,24 +107,20 @@ def main():
             with st.chat_message("assistant"):
                 with st.spinner("Retrieving and Generating..."):
                     retriever = get_retriever()
-                    chunks = retriever.search(query, top_k=get_settings().default_top_k)
+                    app = get_graph(retriever)
+                    inputs = {"query": query}
+
+                    final_state = inputs.copy()
+                    for output in app.stream(inputs):
+                        for key, value in output.items():
+                            final_state.update(value)
+
+                    chunks = final_state.get("chunks", [])
 
                     if not chunks:
                         st.warning("No relevant chunks found in the database.")
                         st.session_state.messages.append({"role": "assistant", "content": "No relevant chunks found in the database."})
                     else:
-                        app = get_graph()
-                        inputs = {
-                            "query": query,
-                            "chunks": chunks,
-                            "retries": 0
-                        }
-
-                        final_state = inputs.copy()
-                        for output in app.stream(inputs):
-                            for key, value in output.items():
-                                final_state.update(value)
-
                         assistant_message = {
                             "role": "assistant",
                             "content": final_state.get("answer", ""),

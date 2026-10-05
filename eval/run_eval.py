@@ -34,8 +34,8 @@ def main():
 
     print(f"Loaded {len(eval_set)} questions from eval set.")
 
-    app = build_graph()
     retriever = Retriever()
+    app = build_graph(retriever=retriever)
 
     results = []
     if os.path.exists(results_path):
@@ -55,21 +55,16 @@ def main():
 
         print(f"\n[{i+1}/{len(eval_set)}] Evaluating ({q_type}): {question}")
 
-        # Retrieve chunks
-        chunks = retriever.search(question, top_k=get_settings().default_top_k)
-
-        inputs = {
-            "query": question,
-            "chunks": chunks,
-            "retries": 0
-        }
+        inputs = {"query": question}
 
         final_state = inputs.copy()
 
-        # Run graph
+        # Run graph (retrieval is now the first node)
         for output in app.stream(inputs):
             for key, value in output.items():
                 final_state.update(value)
+
+        chunks = final_state.get("chunks", [])
 
         # Determine status
         if final_state.get("verification_passed"):

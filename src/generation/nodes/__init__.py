@@ -12,3 +12,4 @@ from src.generation.nodes.core import (  # noqa: F401
     generate_node,
     verify_claims_node,
 )
+from src.generation.nodes.retrieve import make_retrieve_node  # noqa: F401

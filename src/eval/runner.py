@@ -125,15 +125,16 @@ def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
     os.replace(tmp_path, path)
 
 
-def run_one_question(app, retriever: Retriever, item: Dict[str, Any], top_k: int) -> Dict[str, Any]:
+def run_one_question(app, item: Dict[str, Any]) -> Dict[str, Any]:
     question = item["question"]
-    chunks = retriever.search(question, top_k=top_k)
 
-    inputs = {"query": question, "chunks": chunks}
+    inputs = {"query": question}
     final_state = inputs.copy()
     for output in app.stream(inputs):
         for _, value in output.items():
             final_state.update(value)
+
+    chunks = final_state.get("chunks", [])
 
     if final_state.get("verification_passed"):
         status = "verified_after_retry" if final_state.get("retries", 0) > 0 else "verified"
@@ -180,13 +181,13 @@ def run(
           f"Already done: {len(questions) - len(pending)}. Pending: {len(pending)}.")
 
     if pending:
-        app = build_graph()
         retriever = Retriever()
+        app = build_graph(retriever=retriever)
         sleep_time = sleep_seconds if sleep_seconds is not None else cfg.eval_sleep_seconds
 
         for idx, item in enumerate(pending, start=1):
             print(f"\n[{idx}/{len(pending)}] (id={item['id']}, {item['type']}) {item['question']}")
-            result = run_one_question(app, retriever, item, cfg.default_top_k)
+            result = run_one_question(app, item)
             results_by_id[item["id"]] = result
 
             atomic_write_json(results_path, {
