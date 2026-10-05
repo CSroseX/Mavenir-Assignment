@@ -8,7 +8,6 @@ if sys.stdout.encoding.lower() != 'utf-8':
 # Ensure the root of the project is in the python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.config import get_settings
 from src.generation.graph import build_graph
 from src.retrieval.retriever import Retriever
 
@@ -20,25 +19,13 @@ def main():
 
     query = sys.argv[1]
 
-    print("\n--- RETRIEVING CONTEXT ---")
+    print("\n--- BUILDING GRAPH WITH RETRIEVAL ---")
     retriever = Retriever()
-    chunks = retriever.search(query, top_k=get_settings().verify_top_k)
+    app = build_graph(retriever=retriever)
 
-    if not chunks:
-        print("No chunks found for the query.")
-        sys.exit(0)
+    inputs = {"query": query}
 
-    print(f"\nRetrieved {len(chunks)} chunks.")
-
-    print("\n--- GENERATING & VERIFYING ANSWER ---")
-    app = build_graph()
-
-    inputs = {
-        "query": query,
-        "chunks": chunks,
-        "retries": 0
-    }
-
+    print("\n--- RETRIEVING, GENERATING & VERIFYING ANSWER ---")
     final_state = inputs.copy()
     for output in app.stream(inputs):
         for key, value in output.items():
@@ -48,6 +35,9 @@ def main():
     if not final_state:
         print("Error: Graph execution failed.")
         sys.exit(1)
+
+    chunks = final_state.get("chunks", [])
+    print(f"\nRetrieved {len(chunks)} chunks.")
 
     print("\n" + "="*60)
     print("FINAL ANSWER:")

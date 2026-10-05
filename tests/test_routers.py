@@ -1,6 +1,18 @@
 from langgraph.graph import END
 
-from src.generation.routers import should_retry
+from src.generation.routers import after_retrieve, should_retry
+
+
+class TestAfterRetrieve:
+    def test_empty_chunks_routes_to_abstain(self):
+        assert after_retrieve({"chunks": []}) == "abstain"
+
+    def test_no_chunks_key_routes_to_abstain(self):
+        assert after_retrieve({}) == "abstain"
+
+    def test_with_chunks_routes_to_generate(self):
+        state = {"chunks": [{"spec_id": "23.501", "clause_id": "6.2.1"}]}
+        assert after_retrieve(state) == "generate"
 
 
 class TestShouldRetryVerifiedPasses:

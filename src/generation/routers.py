@@ -13,6 +13,14 @@ from langgraph.graph import END
 from src.config import get_settings
 
 
+def after_retrieve(state: Dict[str, Any]) -> str:
+    """Router after the retrieve node: skip LLM calls when retrieval
+    found nothing (mirrors the old pre-graph empty-chunks check)."""
+    if not state.get("chunks"):
+        return "abstain"
+    return "generate"
+
+
 def should_retry(state: Dict[str, Any]) -> str:
     """Router for the `verify` node's conditional edges.
 
