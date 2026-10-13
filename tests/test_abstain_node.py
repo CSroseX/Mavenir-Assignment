@@ -53,6 +53,20 @@ class TestAbstainNodeUnsupportedClaims:
         assert result["abstention"]["unsupported_claims"] == []
 
 
+class TestAbstainNodeInsufficientContext:
+    def test_no_draft_answer_gets_an_explanation(self):
+        from src.generation.nodes.abstain import INSUFFICIENT_CONTEXT_ANSWER
+
+        state = {"chunks": [], "feedback": "", "termination_reason": "insufficient_context"}
+        result = abstain_node(state)
+        assert result["answer"] == INSUFFICIENT_CONTEXT_ANSWER
+        assert result["termination_reason"] == "insufficient_context"
+
+    def test_existing_answer_is_not_overwritten(self):
+        state = {"answer": "draft", "chunks": [], "feedback": "", "termination_reason": "insufficient_context"}
+        assert abstain_node(state)["answer"] == "draft"
+
+
 class TestAbstainNodeTerminationReason:
     def test_preserves_verifier_unavailable(self):
         state = {"answer": "x", "chunks": [], "feedback": "", "termination_reason": "verifier_unavailable"}

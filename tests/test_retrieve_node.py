@@ -82,3 +82,56 @@ class TestMakeRetrieveNode:
         result = node({"query": "test"})
 
         assert result["retrieval_scores"] == [0.0]
+
+
+class TestRetrieveAfterRewrite:
+    def test_uses_rewritten_query_not_original(self):
+        mock_retriever = MagicMock()
+        mock_retriever.search.return_value = []
+
+        node = make_retrieve_node(mock_retriever)
+        node({"query": "What is the AMF?", "retrieval_queries": ["the AMF Access and Mobility Management Function"]})
+
+        args, _ = mock_retriever.search.call_args
+        assert args[0] == "the AMF Access and Mobility Management Function"
+
+    def test_split_queries_are_interleaved_and_deduplicated(self):
+        def search(q, top_k):
+            if "24.301" in q:
+                return [
+                    {"spec_id": "24.301", "clause_id": "5.5.1", "score": 3.0, "content": "attach"},
+                    {"spec_id": "24.301", "clause_id": "5.5.2", "score": 2.0, "content": "detach"},
+                    {"spec_id": "23.501", "clause_id": "6.2.7", "score": 1.0, "content": "udm"},
+                ]
+            return [
+                {"spec_id": "23.501", "clause_id": "6.2.7", "score": 9.0, "content": "udm"},
+                {"spec_id": "23.501", "clause_id": "6.2.1", "score": 8.0, "content": "amf"},
+            ]
+
+        mock_retriever = MagicMock()
+        mock_retriever.search.side_effect = search
+
+        node = make_retrieve_node(mock_retriever)
+        result = node({"query": "q", "retrieval_queries": ["MME attach TS 24.301", "UDM"]})
+
+        assert mock_retriever.search.call_count == 2
+        assert [c["clause_id"] for c in result["chunks"]] == ["5.5.1", "6.2.7", "5.5.2", "6.2.1"]
+
+    def test_merge_caps_at_top_k(self):
+        from src.generation.nodes.retrieve import merge_ranked
+
+        a = [{"spec_id": "a", "clause_id": str(i), "content": f"a{i}"} for i in range(5)]
+        b = [{"spec_id": "b", "clause_id": str(i), "content": f"b{i}"} for i in range(5)]
+        merged = merge_ranked([a, b], 5)
+        assert [c["spec_id"] for c in merged] == ["a", "b", "a", "b", "a"]
+
+    def test_retriever_factory_is_used_lazily(self):
+        mock_instance = MagicMock()
+        mock_instance.search.return_value = []
+        factory = MagicMock(return_value=mock_instance)
+
+        node = make_retrieve_node(retriever_factory=factory)
+        factory.assert_not_called()
+        node({"query": "x"})
+        node({"query": "y"})
+        factory.assert_called_once()

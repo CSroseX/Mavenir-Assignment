@@ -12,4 +12,7 @@ from src.generation.nodes.core import (  # noqa: F401
     generate_node,
     verify_claims_node,
 )
+from src.generation.nodes.grade import grade_sufficiency_node, make_grade_sufficiency_node  # noqa: F401
 from src.generation.nodes.retrieve import make_retrieve_node  # noqa: F401
+from src.generation.nodes.rewrite import rewrite_query_node  # noqa: F401
+from src.generation.nodes.triage import make_triage_node, refuse_node  # noqa: F401

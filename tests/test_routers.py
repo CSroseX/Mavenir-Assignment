@@ -1,18 +1,45 @@
 from langgraph.graph import END
 
-from src.generation.routers import after_retrieve, should_retry
+from src.generation.routers import after_grade, after_rewrite, after_triage, should_retry
 
 
-class TestAfterRetrieve:
-    def test_empty_chunks_routes_to_abstain(self):
-        assert after_retrieve({"chunks": []}) == "abstain"
+class TestPhase4RoutersCrossProduct:
+    """The Phase 4 routers over the cross-product of the state fields they
+    read (and fields they must ignore)."""
 
-    def test_no_chunks_key_routes_to_abstain(self):
-        assert after_retrieve({}) == "abstain"
+    def test_after_triage(self):
+        for decision in (None, "in_domain", "out_of_domain"):
+            for tier in (None, "lexical", "centroid", "llm", "fail_open"):
+                for termination_reason in (None, "out_of_domain"):
+                    state = {"triage_decision": decision, "triage_tier": tier,
+                             "termination_reason": termination_reason}
+                    expected = "refuse" if decision == "out_of_domain" else "retrieve"
+                    assert after_triage(state) == expected, state
 
-    def test_with_chunks_routes_to_generate(self):
-        state = {"chunks": [{"spec_id": "23.501", "clause_id": "6.2.1"}]}
-        assert after_retrieve(state) == "generate"
+    def test_after_rewrite(self):
+        for noop in (None, False, True):
+            for rewrites in (None, 0, 1, 2):
+                state = {"rewrite_noop": noop, "rewrites": rewrites}
+                assert after_rewrite(state) == ("abstain" if noop else "retrieve"), state
+
+    def test_empty_retrieval_never_reaches_generate(self):
+        # Empty retrieval grades to zero relevant chunks: rewrite, then abstain.
+        from src.config import get_settings
+        get_settings.cache_clear()
+        cap = get_settings().max_rewrites
+        assert after_grade({"chunks": [], "n_relevant_chunks": 0, "rewrites": 0}) == "rewrite_query"
+        assert after_grade({"chunks": [], "n_relevant_chunks": 0, "rewrites": cap}) == "abstain"
+
+
+class TestAfterRewrite:
+    def test_real_rewrite_routes_to_retrieve(self):
+        assert after_rewrite({"rewrite_noop": False, "rewrites": 1}) == "retrieve"
+
+    def test_noop_routes_to_abstain(self):
+        assert after_rewrite({"rewrite_noop": True, "rewrites": 1}) == "abstain"
+
+    def test_missing_flag_routes_to_retrieve(self):
+        assert after_rewrite({}) == "retrieve"
 
 
 class TestShouldRetryVerifiedPasses:

@@ -50,7 +50,7 @@ from src.config import get_settings
 from src.generation import nodes as gen_nodes
 from src.generation.graph import build_graph
 from src.obs.metrics import RunRecorder
-from src.obs.tracing import usage_since, usage_snapshot
+from src.obs.tracing import trace_attributes, trace_query, update_trace_attributes, usage_since, usage_snapshot
 from src.retrieval.retriever import Retriever
 
 GOLDEN_SET_PATH = Path(__file__).resolve().parent.parent.parent / "eval" / "golden" / "golden_set.v1.json"
@@ -142,23 +142,25 @@ def run_one_question(app, item: Dict[str, Any], recorder: Optional[RunRecorder] 
     final_state = inputs.copy()
     # app.stream yields once per completed node, so the gap between yields
     # is that node's latency and the usage-log delta is its token spend.
-    last_tick = time.perf_counter()
-    usage_cursor = usage_snapshot()
-    for output in app.stream(inputs):
-        for node_name, value in output.items():
-            final_state.update(value or {})
-            if recorder is not None:
-                now = time.perf_counter()
-                calls = usage_since(usage_cursor)
-                usage_cursor += len(calls)
-                recorder.record_node(
-                    node_name,
-                    latency_ms=(now - last_tick) * 1000,
-                    tokens_in=sum(c["prompt_tokens"] for c in calls),
-                    tokens_out=sum(c["completion_tokens"] for c in calls),
-                    llm_calls=len(calls),
-                )
-                last_tick = now
+    with trace_query(question):
+        last_tick = time.perf_counter()
+        usage_cursor = usage_snapshot()
+        for output in app.stream(inputs):
+            for node_name, value in output.items():
+                final_state.update(value or {})
+                if recorder is not None:
+                    now = time.perf_counter()
+                    calls = usage_since(usage_cursor)
+                    usage_cursor += len(calls)
+                    recorder.record_node(
+                        node_name,
+                        latency_ms=(now - last_tick) * 1000,
+                        tokens_in=sum(c["prompt_tokens"] for c in calls),
+                        tokens_out=sum(c["completion_tokens"] for c in calls),
+                        llm_calls=len(calls),
+                    )
+                    last_tick = now
+        update_trace_attributes(**trace_attributes(final_state))
 
     chunks = final_state.get("chunks", [])
 

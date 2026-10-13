@@ -97,3 +97,108 @@ class TestUsageRecording:
     def test_live_client_create_is_wrapped(self):
         client = tracing.make_llm_client(api_key="k", base_url="http://localhost:1/v1")
         assert client.chat.completions.create.__wrapped__ is not None
+
+
+class TestTraceAttributes:
+    def test_collects_the_five_signals(self):
+        state = {
+            "termination_reason": "verified",
+            "attempt": 2,
+            "chunks": [{"cross_score": 6.1, "score": 7.0}, {"cross_score": 1.0}],
+            "n_relevant_chunks": 3,
+            "triage_decision": "retrieve",
+        }
+        assert tracing.trace_attributes(state) == {
+            "termination_reason": "verified",
+            "attempt": 2,
+            "top1_cross_score": 6.1,
+            "n_relevant_chunks": 3,
+            "triage_decision": "retrieve",
+        }
+
+    def test_falls_back_to_score_and_drops_unset(self):
+        assert tracing.trace_attributes({"chunks": [{"score": 4.2}]}) == {"top1_cross_score": 4.2}
+
+    def test_empty_state(self):
+        assert tracing.trace_attributes({}) == {}
+
+
+class TestTracedNodeWithoutLangfuse:
+    def test_passes_state_through(self):
+        node = tracing.traced_node("retrieve", lambda state: {"chunks": [], "seen": state["query"]})
+        assert node({"query": "q"}) == {"chunks": [], "seen": "q"}
+
+    def test_trace_query_is_noop(self):
+        with tracing.trace_query("q"):
+            pass
+
+
+@pytest.fixture
+def sink_server():
+    """Local HTTP endpoint that accepts (and discards) span exports, so the
+    langfuse exporter neither needs a real backend nor retries after the test."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class Sink(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Sink)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{server.server_port}"
+    server.shutdown()
+
+
+class TestOneQueryOneTrace:
+    """Real langfuse SDK against a sink endpoint, not a Langfuse backend."""
+
+    def test_node_spans_nest_under_each_query_root(self, monkeypatch, sink_server):
+        pytest.importorskip("langfuse")
+        from typing import TypedDict
+
+        from langfuse import get_client
+        from langgraph.graph import END, START, StateGraph
+
+        monkeypatch.setenv("LANGFUSE_HOST", sink_server)
+        monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+        monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+
+        class S(TypedDict, total=False):
+            query: str
+            n: int
+
+        seen = []
+
+        def make(name):
+            def node(state):
+                client = get_client()
+                seen.append((name, client.get_current_trace_id(), client.get_current_observation_id()))
+                return {"n": len(seen)}
+            return node
+
+        graph = StateGraph(S)
+        graph.add_node("a", tracing.traced_node("a", make("a")))
+        graph.add_node("b", tracing.traced_node("b", make("b")))
+        graph.add_edge(START, "a")
+        graph.add_edge("a", "b")
+        graph.add_edge("b", END)
+        app = graph.compile()
+
+        roots = []
+        for q in ["q1", "q2"]:
+            with tracing.trace_query(q):
+                roots.append(get_client().get_current_trace_id())
+                list(app.stream({"query": q}))
+
+        assert roots[0] and roots[0] != roots[1]
+        assert [s[1] for s in seen] == [roots[0], roots[0], roots[1], roots[1]]
+        # Each node is its own span, not the root's.
+        assert len({s[2] for s in seen}) == 4
+        get_client().shutdown()

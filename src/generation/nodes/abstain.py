@@ -23,6 +23,11 @@ from typing import Any, Dict, List
 
 from src.generation.state import GraphState
 
+INSUFFICIENT_CONTEXT_ANSWER = (
+    "The specifications covered here (TS 23.501, TS 24.501, TS 24.301) don't contain enough "
+    "relevant detail to answer this question reliably."
+)
+
 
 def _found_clauses(chunks: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     return [
@@ -37,8 +42,10 @@ def abstain_node(state: GraphState) -> Dict[str, Any]:
 
     termination_reason must already be set by the node that routed here
     (verify_claims_node sets "verifier_unavailable" on a transport
-    failure; the router falls through to this node on exhausted
-    grounding retries, in which case termination_reason defaults to
+    failure; grade_sufficiency_node sets "insufficient_context" when the
+    retrieved context can't answer the question, even after a rewrite;
+    the router falls through to this node on exhausted grounding
+    retries, in which case termination_reason defaults to
     "verification_failed" here).
     """
     chunks = state.get("chunks", [])
@@ -56,8 +63,14 @@ def abstain_node(state: GraphState) -> Dict[str, Any]:
             if line.strip().startswith("- ")
         ]
 
+    answer = state.get("answer", "")
+    if not answer and termination_reason == "insufficient_context":
+        # grade_sufficiency routed here before any generate call, so there is
+        # no draft answer to show; say plainly why there isn't one.
+        answer = INSUFFICIENT_CONTEXT_ANSWER
+
     return {
-        "answer": state.get("answer", ""),
+        "answer": answer,
         "termination_reason": termination_reason,
         "abstention": {
             "found_clauses": _found_clauses(chunks),

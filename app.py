@@ -9,6 +9,7 @@ import streamlit as st
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.generation.graph import build_graph
+from src.obs.tracing import trace_attributes, trace_query, update_trace_attributes
 from src.retrieval.retriever import Retriever
 
 st.set_page_config(page_title="3GPP RAG Assistant", layout="wide")
@@ -111,13 +112,17 @@ def main():
                     inputs = {"query": query}
 
                     final_state = inputs.copy()
-                    for output in app.stream(inputs):
-                        for key, value in output.items():
-                            final_state.update(value)
+                    with trace_query(query):
+                        for output in app.stream(inputs):
+                            for key, value in output.items():
+                                final_state.update(value)
+                        update_trace_attributes(**trace_attributes(final_state))
 
                     chunks = final_state.get("chunks", [])
 
-                    if not chunks:
+                    # Refused (out_of_domain) and some abstained questions
+                    # legitimately end with no chunks; render their badge.
+                    if not chunks and not final_state.get("termination_reason"):
                         st.warning("No relevant chunks found in the database.")
                         st.session_state.messages.append({"role": "assistant", "content": "No relevant chunks found in the database."})
                     else:

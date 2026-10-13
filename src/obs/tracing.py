@@ -17,7 +17,8 @@ from __future__ import annotations
 import functools
 import os
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from contextlib import ExitStack, contextmanager
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional
 
 from src.obs.logging import get_logger
 
@@ -114,6 +115,54 @@ def update_trace_attributes(**attributes: Any) -> None:
         get_client().update_current_span(metadata=attributes)
     except Exception as e:  # tracing backend down or no active span
         log.debug("tracing.update_failed", error=str(e))
+
+
+@contextmanager
+def trace_query(query: str) -> Iterator[None]:
+    """Root span for one question, so every node span nests under it and one
+    query is one trace. A no-op without tracing; a tracing backend that
+    fails to start a span never fails the query."""
+    with ExitStack() as stack:
+        if tracing_enabled():
+            try:
+                from langfuse import get_client
+                stack.enter_context(get_client().start_as_current_observation(
+                    name="rag_query", as_type="chain", input={"query": query},
+                ))
+            except Exception as e:
+                log.debug("tracing.trace_query_failed", error=str(e))
+        yield
+
+
+def trace_attributes(state: Mapping[str, Any]) -> Dict[str, Any]:
+    """The decision signals recorded on node spans and on the query's root
+    span: termination_reason, attempt, top1_cross_score, n_relevant_chunks,
+    triage_decision. Keys whose value is not set yet are left out."""
+    chunks = state.get("chunks") or []
+    top1 = chunks[0].get("cross_score", chunks[0].get("score")) if chunks else None
+    attributes = {
+        "termination_reason": state.get("termination_reason"),
+        "attempt": state.get("attempt"),
+        "top1_cross_score": top1,
+        "n_relevant_chunks": state.get("n_relevant_chunks"),
+        "triage_decision": state.get("triage_decision"),
+    }
+    return {k: v for k, v in attributes.items() if v is not None}
+
+
+def traced_node(name: str, node: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Callable:
+    """Wrap a graph node in an observe() span named after it, recording the
+    decision signals as of the node's output. LangGraph reads the node's
+    signature, so the wrapper keeps the single `state` parameter."""
+
+    @observe(name=name)
+    def traced(state: Dict[str, Any]) -> Dict[str, Any]:
+        update = node(state)
+        if tracing_enabled():
+            update_trace_attributes(**trace_attributes({**state, **(update or {})}))
+        return update
+
+    return traced
 
 
 def usage_snapshot() -> int:
